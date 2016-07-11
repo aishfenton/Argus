@@ -1,5 +1,11 @@
 
+lazy val Vers = new {
+  val circe = "0.4.1"
+  val scalatest = "2.2.6"
+}
+
 lazy val commonSettings = Seq(
+  name := "Argus",
   organization := "com.github.aishfenton",
   version := "0.0.1",
   scalaVersion := "2.11.8",
@@ -48,35 +54,44 @@ lazy val noPublishSettings = Seq(
   publishArtifact := false
 )
 
-lazy val macros = project.
-  settings(moduleName := "argus-macros").
+lazy val argus = project.
+  settings(moduleName := "argus").
   settings(commonSettings: _*).
   settings(
     libraryDependencies ++= Seq(
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
       "org.scala-lang" % "scala-compiler" % scalaVersion.value % "provided",
       "org.typelevel" %% "macro-compat" % "1.1.1",
-      "com.github.julien-truffaut"  %%  "monocle-core" % "1.1.0"
+//      "com.chuusai" %% "shapeless" % "2.3.1",
+
+      "io.circe" %% "circe-core" % Vers.circe,
+      "io.circe" %% "circe-generic" % Vers.circe,
+      "io.circe" %% "circe-parser" % Vers.circe,
+
+      "com.lihaoyi" %% "pprint" % "0.4.1",
+      "org.scalactic" %% "scalactic" % Vers.scalatest % "test",
+      "org.scalatest" %% "scalatest" % Vers.scalatest % "test"
     )
   )
 // settings(noPublishSettings: _*)
 
-lazy val argus = project.in(file("core")).
-  settings(moduleName := "argus").
-  dependsOn(macros).
+lazy val argusExample = project.in(file("example")).
+  settings(moduleName := "argus-example").
+  dependsOn(argus).
   settings(commonSettings: _*).
   settings(
     libraryDependencies ++= Seq(
-      "io.argonaut" %% "argonaut" % "6.1",
-      "org.scalactic" %% "scalactic" % "2.2.6" % "test",
-      "org.scalatest" %% "scalatest" % "2.2.6" % "test"
+      "org.scalactic" %% "scalactic" % Vers.scalatest % "test",
+      "org.scalatest" %% "scalatest" % Vers.scalatest % "test"
     )
-  )
+  ).
+  settings(noPublishSettings)
 
 lazy val root = (project in file(".")).
-  aggregate(argus).
+  aggregate(argus, argusExample).
   settings(commonSettings: _*).
   settings(noPublishSettings: _*)
+
 
 // Clears screen between refreshes in continuous mode
 maxErrors := 5
