@@ -1,6 +1,4 @@
 package argus
 
-//@fromSchema("my-schema.json")
-class Example {
-
-}
+//@fromSchema("/my-schema.json")
+object Example

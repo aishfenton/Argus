@@ -1,0 +1,34 @@
+{
+  "title": "Example Schema",
+  "type": "object",
+  "definitions" : {
+    "Address": {
+      "type": "object",
+      "properties": {
+        "number" : { "type": "integer" },
+        "street" : { "type": "string" }
+      }
+    },
+    "ErdosNumber": {
+      "type": "integer"
+    }
+  },
+  "properties": {
+    "firstName": {
+      "type": "string"
+    },
+    "lastName": {
+      "type": "string"
+    },
+    "age": {
+      "description": "Age in years",
+      "type": "integer"
+    },
+    "country": {
+      "type": "string",
+      "enum" : ["USA", "UK", "NZ"]
+    },
+    "address" : { "$ref" : "#/definitions/Address" },
+    "erdosNumber" : { "$ref" : "#/definitions/ErdosNumber" }
+  }
+}
