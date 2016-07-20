@@ -55,12 +55,14 @@ class SchemaMacros(val c: Context) {
 
     val schema = readSchema(c.prefix.tree)
 
-    val defs = modelBuilder.mkSchema("Root", schema)
 
     val result = annottees map (_.tree) match {
 
       // Match object
       case (objDef @ q"$mods object $tname extends { ..$earlydefns } with ..$parents { $self => ..$stats }") :: _ => {
+
+        val defs = modelBuilder.mkSchema(List(tname.toString), "Root", schema)
+
         q"""
           $mods object $tname extends { ..$earlydefns } with ..$parents { $self =>
             ..$defs

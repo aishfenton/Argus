@@ -53,6 +53,9 @@ object Schema {
 
     def toJson = this.asJson
     val printer = Printer.spaces2.copy(dropNullKeys = true)
+
+    // Convenience method since any/all of are treated roughly the same by the generated code
+    def multiOf = anyOf.orElse(allOf)
   }
 
   // Useful for dealing with enums, which we leave as raw Json, but because we don't want to expose our Json implementation

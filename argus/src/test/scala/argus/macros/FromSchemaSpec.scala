@@ -54,8 +54,34 @@ class FromSchemaSpec extends FlatSpec with Matchers {
     object Foo
     import Foo._
 
-    val a = A(Some("bar"))
+    val a = Root.A(Some("bar"))
     Root(Some(a)).a.get.b.get should === ("bar")
+  }
+
+  // XXX currently doesn't work, needs some thought
+  it should "produce types for nested definitions" in {
+
+    @fromSchemaJson("""
+      {
+        "type": "object",
+        "properties": {
+          "a": {
+            "definitions": {
+              "Person": { "type": "object", "properties": { "name": { "type": "string" } } }
+            },
+            "type": "object",
+            "properties": {
+              "b" : { "$ref": "#/properties/a/definitions/Person" }
+            }
+          }
+        }
+      }
+    """)
+    object Foo
+    import Foo._
+
+    val a = Root.A(Some(Root.Person(Some("bob"))))
+    Root(Some(a)).a.get.b.get should === (Root.Person(Some("bob")))
   }
 
   it should "wrap every field in an Option except those that are 'required'" in {
@@ -91,8 +117,8 @@ class FromSchemaSpec extends FlatSpec with Matchers {
     object Foo
     import Foo._
 
-    val root = Root(Some(CountryEnum.NZ))
-    root.country should === (Some(CountryEnum.NZ))
+    val root = Root(Some(Root.CountryEnum.NZ))
+    root.country should === (Some(Root.CountryEnum.NZ))
   }
 
   it should "name enums with complex types something sensible, but have rawJson encoded within it" in {
@@ -107,27 +133,56 @@ class FromSchemaSpec extends FlatSpec with Matchers {
     object Foo
     import Foo._
 
-    WeirdoEnum.Bob.json should === (""""Bob"""")
-    WeirdoEnum.n4.json should === ("4")
-    WeirdoEnum.AB.json should === ("""{"a":"b"}""")
+    Root.WeirdoEnum.Bob.json should === (""""Bob"""")
+    Root.WeirdoEnum.n4.json should === ("4")
+    Root.WeirdoEnum.AB.json should === ("""{"a":"b"}""")
   }
 
-  it should "produce sum types for [one/any/all]Of schemas" in {
+  it should "produce a sum types for [one/any/all]Of when it references a definition" in {
     @fromSchemaJson("""
     {
-      "type": "object",
+      "type" : "object",
+      "definitions": {
+        "Street": {
+          "type": "object",
+          "properties" : { "street" : { "type" : "string" } },
+          "required" : ["street"]
+        }
+      },
       "properties": {
-        "weirdo": { "enum": ["Bob", 4, { "a" : "b" }] }
+        "address": {
+          "oneOf": [
+            { "type": "string" },
+            { "$ref": "#/definitions/Street" }
+          ]
+        }
       }
     }
-                    """)
+    """)
     object Foo
     import Foo._
 
-    WeirdoEnum.Bob.json should === (""""Bob"""")
-    WeirdoEnum.n4.json should === ("4")
-    WeirdoEnum.AB.json should === ("""{"a":"b"}""")
+    val string = Root.AddressString("Main St")
+    val street = Root.AddressStreet(Street("1010 Main St"))
+    Root(Some(street)).address.get match { case Root.AddressStreet(st: Street) => st === (Street("1010 Main St")) }
   }
+
+  it should "produce a sum types for [one/any/all]Of when there are nested anonymous schemas" in {
+    @fromSchemaJson("""
+    {
+      "oneOf" : [
+        { "type": "integer" },
+        { "type": "object", "properties" : { "a" : { "type" : "string" } } }
+      ]
+    }
+    """)
+    object Foo
+    import Foo._
+
+    val a = RootInt(4)
+    val b = RootRoot2(Root2(a=Some("b")))
+  }
+
 
   it should "compile when we use a complex real-life schema" in {
 //    @fromSchemaResource("/vega-lite-schema.json")
