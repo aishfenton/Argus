@@ -88,7 +88,7 @@ object Schema {
     } yield Root($schema, id, title, description, definitions, properties, typ, enum, oneOf, anyOf, allOf, not, required,
                  items, format, minimum, maximum, exclusiveMinimum, exclusiveMaximum, $ref))
 
-  implicit def RootEncoder[A]: Encoder[Root] =
+  implicit val RootEncoder: Encoder[Root] =
     Encoder.instance((r: Root) => Json.obj(
       "$schema" -> r.$schema.asJson,
       "id" -> r.id.asJson,

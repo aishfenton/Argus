@@ -1,52 +1,34 @@
 package argus.macros
 
 import macrocompat.bundle
+
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 import argus.schema._
 
+import scala.reflect.api.Universe
+
 /**
   * Helper to build the model class for a given schema.
   *
-  * @param c The macro reflection context
-  * @tparam C wats dis? We need an explicit type to help the type checker see that our path-dependent type
-  *           of Context, is actually the same as the one used in the main macro class. ¯\_(ツ)_/¯. #loltypes
+  * @param u The reflection universe. Can support macro and runtime reflection
+  * @tparam U wats dis? We need an explicit type to help the type checker see that our path-dependent type
+  *           of Universe, is actually the same as the one used in the main macro class. ¯\_(ツ)_/¯. #loltypes
   */
-class ModelBuilder[C <: Context](val c: C) {
+class ModelBuilder[U <: Universe](val u: U) {
   import Schema._
-  import c.universe._
+  import u._
 
-  val helpers = new ASTHelpers(c)
+  val helpers = new ASTHelpers[u.type](u)
   import helpers._
 
-  val RefPathExtractor = """([\w#]+)/properties""".r("name")
-  val RefNameExtractor = """[^/]+$""".r
-
-//  private val IntrinsicType = SimpleTypes.Boolean :: SimpleTypes.String :: SimpleTypes.Number ::
-//    SimpleTypes.Integer :: SimpleTypes.Null :: Nil
+  val IntrinsicType = SimpleTypes.Boolean :: SimpleTypes.String :: SimpleTypes.Number ::
+    SimpleTypes.Integer :: SimpleTypes.Null :: Nil
 
   /**
-    * Extracts a package path from a json-schema $ref.
-    * @param path Current path, although we only use the container + root elements, since $ref should always be an
-    *             absolute referneces (relative to container/root/))
-    * @param ref The $ref element to decompose.
+    * Make a type from a SimpleType, when st is a built in type (i.e. Boolean, Int, Double, String, or Null)
     */
-  private def extractPathFromRef(path: List[String], ref: String): List[String] = {
-    require(ref.startsWith("#/"), "references need to be absolute: " + ref)
-
-    // We make every instance of "/x/properties" into a path references. We have to treat the root, #, as a special case
-    // and replace it with whatever name we passed configured
-    val defPath = RefPathExtractor.findAllMatchIn(ref).map(_.group("name").capitalize).map {
-      case "#" => path.tail.head
-      case e: String => e
-    }.toList
-
-    val name = RefNameExtractor.findFirstIn(ref).get
-
-    path.head :: (defPath :+ name)
-  }
-
-  private def mkIntrinsicType(st: SimpleType): Tree = st match {
+  def mkIntrinsicType(st: SimpleType): Tree = st match {
     case SimpleTypes.Boolean => tq"Boolean"
     case SimpleTypes.Integer => tq"Int"
     case SimpleTypes.Number => tq"Double"
@@ -55,7 +37,7 @@ class ModelBuilder[C <: Context](val c: C) {
     case _ => throw new Exception("Type isn't a known intrinsic type " + st)
   }
 
-  private def mkCaseClass(path: List[String], name: String, fields: List[Field], requiredFields: Option[List[String]]): List[Tree] = {
+  def mkCaseClassDef(path: List[String], name: String, fields: List[Field], requiredFields: Option[List[String]]): List[Tree] = {
 
     // Build val defs for each field in case class, keeping track of new class defs created along the way (for nested
     // types
@@ -73,22 +55,6 @@ class ModelBuilder[C <: Context](val c: C) {
     ccDef :: companionDef :: Nil
   }
 
-  private def inOption(inner: Tree) = { tq"Option[$inner]" }
-
-  /**
-    * Best attempt at producing a name from a Json blob. This is mostly used for enum, where the enum's can be any
-    * abitary Json structure. Mostly they are plain strings, in which case this is a no-op, but in the case where
-    * it's more complex then the property names from json structure are used to build a name. If the json object
-    * is a number then decimial points are stripped, and "n" is prefixed (i.e. 3.14 => n314).
-    */
-  private def jsonToClassName(json: String) =
-    json
-      .split("[^A-Za-z0-9_.-]+")
-      .filterNot(_.isEmpty)
-      .map(_.capitalize)
-      .map { s => if (s.head.isDigit) "n" + s else s }
-      .mkString
-
   /**
     * Makes a representation of an enumeration type. We model this as a "sum type" in scala, where each enum is an object
     * that inherits from the base trait. The base trait is sealed so that it can be used for pattern matching.
@@ -97,12 +63,12 @@ class ModelBuilder[C <: Context](val c: C) {
     * @param enum List of all possible enum values
     * @return List[Tree] containing all the definitions
     */
-  private def mkEnumDef(path: List[String], baseName: String, enum: List[String]): List[Tree] = {
+  def mkEnumDef(path: List[String], baseName: String, enum: List[String]): List[Tree] = {
     val baseTyp = TypeName(baseName)
     val baseDef = q"sealed trait $baseTyp extends scala.Product with scala.Serializable { def json: String }"
 
     val memberDefs = enum.map { m =>
-      val name = TermName(jsonToClassName(m))
+      val name = TermName(typeNameFromJson(m))
       q"case object $name extends $baseTyp { val json = $m }"
     }
 
@@ -118,7 +84,7 @@ class ModelBuilder[C <: Context](val c: C) {
     * @param schemas A list of allowed sub-types
     * @return A list of definitions created to support the union type.
     */
-  private def mkUnionTypeDef(path: List[String], baseName: String, schemas: List[Root]): List[Tree] = {
+  def mkUnionTypeDef(path: List[String], baseName: String, schemas: List[Root]): List[Tree] = {
     val baseTyp = TypeName(baseName)
     val baseDef = q"sealed trait $baseTyp extends scala.Product with scala.Serializable"
 
@@ -139,6 +105,8 @@ class ModelBuilder[C <: Context](val c: C) {
     baseDef :: memberDefs ++ defDefs
   }
 
+  def mkArrayDef(path: List[String], schema: Root) = EmptyTree
+
   /**
     * Creates a Class/Type definition (i.e. creates a case class or type alias).
     *
@@ -153,78 +121,52 @@ class ModelBuilder[C <: Context](val c: C) {
     */
   def mkDef(path: List[String], name: String, schema: Root): List[Tree] = {
 
-    val multiOf = schema.anyOf.getOrElse(schema.allOf)
-
-    (schema.typ, schema.$ref, schema.enum, schema.oneOf, schema.multiOf) match {
+    (schema.$ref, schema.enum, schema.typ,  schema.oneOf, schema.multiOf) match {
 
       // No type specified so either needs a ref, or ??
-      case (_,Some(ref),_,_,_) => {
+      case (Some(ref),_,_,_,_) => {
         List(mkTypeAlias(path, name, ref))
       }
 
-      case (_,_,Some(enum),_,_) => {
+      case (_,Some(enum),_,_,_) => {
         mkEnumDef(path, name, enum)
       }
 
       // Object, so look into properties to make a new Type
-      case (Some(SimpleTypeTyp(SimpleTypes.Object)),_,_,_,_) => {
-        val defs = mkCaseClass(path, name, schema.properties.get, schema.required)
+      case (_,_,Some(SimpleTypeTyp(SimpleTypes.Object)),_,_) => {
+        val defs = mkCaseClassDef(path, name, schema.properties.get, schema.required)
         defs
       }
 
-//      // For Array types, we need to look at "items" attribute
-//      case (Some(SimpleTypeTyp(SimpleTypes.Array)),_,_,_,_) => {
-//        // TODO
-//        //        val items = schema.items
-//        val typ = Ident(TermName("Int"))
-//        Nil
-//      }
+      // Array, create type alias to List wrapper of internal schema
+      case (_,_,Some(SimpleTypeTyp(SimpleTypes.Array)),_,_) => {
+        val (typ, defs) = mkTyp(path, schema, name + "Item")
+        mkTypeAlias(path, name, typ) :: defs
+      }
+
+      case (_,_,Some(ListSimpleTypeTyp(list)),_,_) => throw new UnsupportedOperationException("Lists of simple types aren't supported yet")
 
       // Make intrinsic type alias
-      case (Some(SimpleTypeTyp(st: SimpleType)),_,_,_,_) if IntrinsicType.contains(st) => {
+      case (_,_,Some(SimpleTypeTyp(st: SimpleType)),_,_) if IntrinsicType.contains(st) => {
         List(mkTypeAlias(path, name, mkIntrinsicType(st)))
       }
 
-      // Handle one ofs
+      // Handle oneOfs
       case (_,_,_,Some(schemas),_) => {
         mkUnionTypeDef(path, name, schemas)
       }
 
-      // Handle all or any ofs
+      // Handle all or anyOfs and allOfs
       case (_,_,_,_,Some(schemas)) => {
+        // TODO
 //        List(mkTypeAlias(name, mkIntrinsicType(st)))
         Nil
       }
 
-      // TODO
-      case t@_ => Nil // throw new Exception("Have no idea what to do with " + t)
+      case _ => Nil //throw new Exception("Have no idea how to define " + schema)
 
     }
 
-  }
-
-  /**
-    * Quasiquote don't support building trees of selects (i.e. obj1.obj2.MyObj), so we do it here manually.
-    *
-    * @param path List of strings representing the paths.
-    * @return e.g. obj1.obj2.myObj becomes: Select(Select(Ident(TermName("obj1")), TermName("obj2")), TermName("myObj"))
-    */
-  private def mkSelectPath(path: List[String]) = {
-    def mkPathRec(path: List[String]): Tree = path match {
-      case "_root_" :: Nil => Ident(termNames.ROOTPKG)
-      case a :: Nil => Ident(TermName(a))
-      case a :: xs => Select(mkPathRec(xs), TermName(a))
-    }
-
-    mkPathRec(path.reverse)
-  }
-
-  /**
-    * Builds on mkSelectPath, but treats last item is a Type rather than a TermName
-    */
-  private def mkTypeSelectPath(path: List[String]): Tree = path match {
-    case a :: Nil => Ident(TypeName(a))
-    case a :: xs => Select(mkSelectPath(path.dropRight(1)), TypeName(path.last))
   }
 
   /**
@@ -237,28 +179,50 @@ class ModelBuilder[C <: Context](val c: C) {
     * @return A tuple containing the Ident of the type, and a Tree of any addition class definitions
     *         that needed to be generated.
     */
-  private def mkTyp(path: List[String], schema: Root, defaultName: String): (Tree, List[Tree]) = {
+  def mkTyp(path: List[String], schema: Root, defaultName: String): (Tree, List[Tree]) = {
 
     // If references existing schema, use that instead
-    (schema.typ, schema.$ref) match {
+    (schema.typ, schema.$ref, schema.enum, schema.oneOf, schema.multiOf) match {
 
       // A $ref takes precedence over everything
-      case (_,Some(ref)) => {
+      case (_,Some(ref),_,_,_) => {
         val typ = mkTypeSelectPath(extractPathFromRef(path, ref))
-        println(typ)
         (typ, Nil)
       }
 
+      // Handle array types
+      case (Some(SimpleTypeTyp(SimpleTypes.Array)),_,_,_,_) => {
+
+        val itemsSchema = schema.items match {
+          case Some(ItemsRoot(s)) => s
+          case Some(ItemsSchemaArray(sa)) =>
+            throw new UnsupportedOperationException("SchemaArrays within items are currently unsupported: " + schema)
+          case None =>
+            throw new Exception("Array types must have an items property within the schema. " + schema)
+        }
+
+        val (typ, defs) = mkTyp(path, itemsSchema, defaultName)
+        (inList(typ), defs)
+      }
+
       // Make intrinsic type reference
-      case (Some(SimpleTypeTyp(st: SimpleType)),_) if IntrinsicType.contains(st) => {
+      case (Some(SimpleTypeTyp(st: SimpleType)),_,_,_,_) if IntrinsicType.contains(st) => {
         (mkIntrinsicType(st), Nil)
       }
 
-      // If not one of the special cases above, then we treat it as an nested definition that needs to be created
-      case _ => {
-        val defs = mkSchema(path, defaultName, schema)
+      // If it contains any inline definitions, then delegate to mkDef
+      case (Some(SimpleTypeTyp(SimpleTypes.Object)),_,_,_,_)
+           | (_,_,Some(_),_,_)
+           | (_,_,_,Some(_),_)
+           | (_,_,_,_,Some(_)) => {
+        val defs = mkSchemaDef(path, defaultName, schema)
         val typ = tq"${ mkTypeSelectPath(path :+ defaultName) }"
         (typ, defs)
+      }
+
+      // Otherwise, assume type Any
+      case _ => {
+        (tq"Any", Nil)
       }
 
     }
@@ -269,7 +233,7 @@ class ModelBuilder[C <: Context](val c: C) {
     * Makes a value definition (e.g. val i: Int). These are used for constructing parameter lists
     * and declaring local objects
     */
-  private def mkValDef(path: List[String], field: Field, optional: Boolean): (ValDef, List[Tree]) = {
+  def mkValDef(path: List[String], field: Field, optional: Boolean): (ValDef, List[Tree]) = {
     val schema = field.schema
 
     val (typ, defs) = mkTyp(path, schema, field.name.capitalize)
@@ -283,10 +247,10 @@ class ModelBuilder[C <: Context](val c: C) {
     (valDef, defs)
   }
 
-  private def mkTypeAlias(path: List[String], name: String, typ: String): Tree = mkTypeAlias(path, name, Ident(TypeName(typ)))
-  private def mkTypeAlias(path: List[String], name: String, typ: Tree): Tree = q"type ${TypeName(name)} = $typ"
+  def mkTypeAlias(path: List[String], name: String, typ: String): Tree = mkTypeAlias(path, name, Ident(TypeName(typ)))
+  def mkTypeAlias(path: List[String], name: String, typ: Tree): Tree = q"type ${TypeName(name)} = $typ"
 
-  def mkSchema(path: List[String], name: String, schema: Root): List[Tree] = {
+  def mkSchemaDef(path: List[String], name: String, schema: Root): List[Tree] = {
 
     // Make definitions
     val defdefs = for {
