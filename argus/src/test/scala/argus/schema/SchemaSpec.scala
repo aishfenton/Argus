@@ -42,7 +42,7 @@ class SchemaSpec extends FlatSpec with Matchers {
     countryEnum should === (Some(List( "\"USA\"", "4", """{"a":"b"}""" )))
   }
 
-  it should "round more complex schemas" in {
+  it should "round trip more complex schemas" in {
 //    val jsonStr = Source.fromInputStream(getClass.getResourceAsStream("/meta-schema.json")).getLines.mkString("\n")
 //    val schema = Schema.fromJson(jsonStr)
 //

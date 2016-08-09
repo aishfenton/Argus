@@ -17,6 +17,8 @@ object Schema {
   }
 
   def fromURL(url: String): Root = {
+    JsonNumber
+    JsonObject
     fromJson(Source.fromURL(url).getLines.mkString("\n"))
   }
 
@@ -34,6 +36,38 @@ object Schema {
     }
   }
 
+  /**
+    * Convenience method for creating a schema from a simple type (e.g. { "type" : "string" }
+    */
+  def schemaFromSimpleType(st: SimpleType) = Root(typ=Some(SimpleTypeTyp(st)))
+
+  /**
+    * Convenience method for creating schemas that represent an object (based on given fields)
+    */
+  def schemaFromFields(fields: List[Field]) = Root(typ=Some(SimpleTypeTyp(SimpleTypes.Object)), properties=Some(fields))
+
+  /**
+    * Convenience method for creating schemas that reference another schema
+    */
+  def schemaFromRef(ref: String) = Root($ref = Some(ref))
+
+  /**
+    * Convenience method for creating schemas from enums
+    * @param enum A list if items to enum (encoded as json strings)
+    */
+  def schemaFromEnum(enum: List[String]) = Root(enum = Some(enum))
+
+  /**
+    * Convenience method for creating schemas from an array
+    * @param schema A schema that defines the type of the array
+    */
+  def schemaFromArray(schema: Root) = Root(typ=Some(SimpleTypeTyp(SimpleTypes.Array)), items=Some(ItemsRoot(schema)))
+
+  /**
+    * Convenience method for creating schemas based on a union type of the listed schemas (aka oneOf)
+    */
+  def schemaFromUnionType(schemas: List[Root]) = Root(oneOf=Some(schemas))
+
   // -------
   // Model objects
   // -------
@@ -43,7 +77,7 @@ object Schema {
   type StringArray = List[String]
 
   case class Root
-    ($schema: Option[String] = None, id: Option[String], title: Option[String] = None, description: Option[String] = None,
+    ($schema: Option[String] = None, id: Option[String] = None, title: Option[String] = None, description: Option[String] = None,
     definitions: Option[List[Field]] = None, properties: Option[List[Field]] = None,
     typ: Option[Typ] = None, enum: Option[List[String]] = None,
     oneOf: Option[SchemaArray] = None, anyOf: Option[SchemaArray] = None, allOf: Option[SchemaArray] = None,
@@ -52,10 +86,13 @@ object Schema {
     $ref: Option[String] = None) {
 
     def toJson = this.asJson
+    def toJsonString = this.asJson.pretty(printer)
     val printer = Printer.spaces2.copy(dropNullKeys = true)
 
     // Convenience method since any/all of are treated roughly the same by the generated code
     def multiOf = anyOf.orElse(allOf)
+
+    def justDefinitions = Root(definitions=this.definitions)
   }
 
   // Useful for dealing with enums, which we leave as raw Json, but because we don't want to expose our Json implementation
@@ -123,7 +160,7 @@ object Schema {
         (f) => DecodingFailure("Couldn't decode Typ: " + c.focus.toString, f.history),
         {
           case st: SimpleType => SimpleTypeTyp(st)
-          case lst: List[SimpleType] => ListSimpleTypeTyp(lst)
+          case lst: List[SimpleType] @unchecked => ListSimpleTypeTyp(lst)
           case t@_ => throw new Exception("Don't know typ " + t)
         }
       )
@@ -207,7 +244,7 @@ object Schema {
         (f) => DecodingFailure("Couldn't decode Items: " + c.focus.toString, f.history),
         {
           case r: Root => ItemsRoot(r)
-          case sa: SchemaArray => ItemsSchemaArray(sa)
+          case sa: SchemaArray @unchecked => ItemsSchemaArray(sa)
           case t@_ => throw new Exception("Don't know typ " + t)
         }
       )

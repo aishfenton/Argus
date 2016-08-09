@@ -14,19 +14,13 @@
     }
   },
   "properties": {
-    "firstName": {
-      "type": "string"
-    },
-    "lastName": {
-      "type": "string"
+    "name": {
+      "type": "array",
+      "items": { "type": "string" }
     },
     "age": {
       "description": "Age in years",
       "type": "integer"
-    },
-    "country": {
-      "type": "string",
-      "enum" : ["USA", "UK", "NZ"]
     },
     "address" : { "$ref" : "#/definitions/Address" },
     "erdosNumber" : { "$ref" : "#/definitions/ErdosNumber" }

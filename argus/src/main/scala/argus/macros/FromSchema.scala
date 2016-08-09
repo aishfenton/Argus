@@ -15,12 +15,14 @@ object JsonEngs {
 /**
   * Augments the annotated object with cases classes that implement the given Json Schema
   * @param json A string containing a Json schema
+  * @param debug Dumps the generated code to stdout. Useful for debugging.
   * @param jsonEng The Json engine that we generate encode/decoders for. At the moment the only valid value is
   *                Some(JsonEngs.Circe) or None
-  * @param debug Dumps the generated code to stdout. Useful for debugging.
+  * @param outPath Optional path, that if specified writes the generated code to a file at that path (defaults to None,
+  *                so no file is written).
   */
 @compileTimeOnly("You must enable the macro paradise plugin.")
-class fromSchemaJson(json: String, jsonEng: Option[JsonEng] = None, debug: Boolean = false) extends StaticAnnotation {
+class fromSchemaJson(json: String, debug: Boolean = false, jsonEng: Option[JsonEng] = None, outPath: Option[String] = None) extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro SchemaMacros.fromSchemaMacroImpl
 }
 
@@ -28,9 +30,13 @@ class fromSchemaJson(json: String, jsonEng: Option[JsonEng] = None, debug: Boole
   * Same as fromSchemaJson, but loads the json schema from the given resource path
   * @param path Path to schema file within resources
   * @param debug Dumps the generated code to stdout. Useful for debugging.
+  * @param jsonEng The Json engine that we generate encode/decoders for. At the moment the only valid value is
+  *                Some(JsonEngs.Circe) or None
+  * @param outPath Optional path, that if specified writes the generated code to a file at that path (defaults to None,
+  *                so no file is written).
   */
 @compileTimeOnly("You must enable the macro paradise plugin.")
-class fromSchemaResource(path: String, debug: Boolean = false) extends StaticAnnotation {
+class fromSchemaResource(path: String, debug: Boolean = false, jsonEng: Option[JsonEng] = None, outPath: Option[String] = None) extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro SchemaMacros.fromSchemaMacroImpl
 }
 
@@ -38,11 +44,16 @@ class fromSchemaResource(path: String, debug: Boolean = false) extends StaticAnn
   * Same as fromSchemaJson, but loads the json schema from the given file path.
   * @param url URL string to resource containing the json schema
   * @param debug Dumps the generated code to stdout. Useful for debugging.
+  * @param jsonEng The Json engine that we generate encode/decoders for. At the moment the only valid value is
+  *                Some(JsonEngs.Circe) or None
+  * @param outPath Optional path, that if specified writes the generated code to a file at that path (defaults to None,
+  *                so no file is written).
   */
 @compileTimeOnly("You must enable the macro paradise plugin.")
-class fromSchemaURL(url: String, debug: Boolean = false) extends StaticAnnotation {
+class fromSchemaURL(url: String, debug: Boolean = false, jsonEng: Option[JsonEng] = None, outPath: Option[String]) extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro SchemaMacros.fromSchemaMacroImpl
 }
+
 
 @bundle
 class SchemaMacros(val c: Context) {
@@ -50,57 +61,87 @@ class SchemaMacros(val c: Context) {
 
   private val modelBuilder = new ModelBuilder[c.universe.type](c.universe)
   private val codecBuilder = new CirceCodecBuilder[c.universe.type](c.universe)
+  private val helpers = new ASTHelpers[c.universe.type](c.universe)
+  import helpers._
 
-  private def parse(path: String) = Schema.fromResource(path)
+  case class Params(schema: Schema.Root, debug: Boolean, jsonEnd: Option[JsonEng], outPath: Option[String])
 
-  private def params(prefix: Tree) = {
-    val q"new $name (..$params)" = prefix
-
+  private def extractParams(prefix: Tree): Params = {
+    val q"new $name (..$paramASTs)" = prefix
     val (Ident(TypeName(fn: String))) = name
 
-    // Get params
-    val content = (params lift) (0) map { case Literal(Constant(x: String)) => x } get
-    val jsonEng = (params lift) (1) map {
-      case q"Some(JsonEngs.$eng)" => Some(eng.toString)
-      case q"None" => None
-    } getOrElse(None)
-    val debug = (params lift) (2) map { case Literal(Constant(debug: Boolean)) => debug } getOrElse(false)
+    val commonParams = ("debug", false) :: ("jsonEng", q"Some(JsonEngs.Circe)") :: ("outPath", None) :: Nil
 
-    (fn, content, jsonEng, debug)
-  }
+    val params = fn match {
+      case "fromSchemaResource" => {
+        val params = paramsToMap(("path", "Path missing") :: commonParams, paramASTs)
+        params + ("schema" -> Schema.fromResource(params("path").asInstanceOf[String]))
+      }
+      case "fromSchemaURL" => {
+        val params = paramsToMap(("url", "URL missing") :: commonParams, paramASTs)
+        params + ("schema" -> Schema.fromURL(params("url").asInstanceOf[String]))
+      }
 
-  private def readSchema(fn: String, content: String) = fn match {
-    case "fromSchemaResource" => Schema.fromResource(content)
-    case "fromSchemaURL" => Schema.fromURL(content)
-    case "fromSchemaJson" => Schema.fromJson(content)
-    case _ => c.abort(c.enclosingPosition, "Didn't know annotation " + fn)
-  }
+      case "fromSchemaJson" => {
+        val params = paramsToMap(("json", "Json missing") :: commonParams, paramASTs)
+        params + ("schema" -> Schema.fromJson(params("json").asInstanceOf[String]))
+      }
 
-  private def mkCodecs(jsonEng: Option[String], defs: List[Tree], path: List[String]) = {
-    val codecDefs = jsonEng match {
-      case Some("Circe") => codecBuilder.mkCodec(defs, path)
-      case _ => Nil
+      case _ => c.abort(c.enclosingPosition, "Didn't know annotation " + fn)
     }
+
+    Params(
+      params("schema").asInstanceOf[Schema.Root],
+      params("debug").asInstanceOf[Boolean],
+      params("jsonEng") match { case q"Some(JsonEngs.Circe)" => Some(JsonEngs.Circe); case q"None" => None },
+      params("outPath").asInstanceOf[Option[String]]
+    )
+  }
+
+  private def saveToFile(path: String, tree: Tree) = {
+    // Clean up the code a little to make it more readable
+    val code = showCode(tree)
+      .replaceAll(",", ",\n")
+      .replaceAll("\\.flatMap", "\n.flatMap")
+
+    val file = new java.io.File(path)
+    println("Writing generated code to: " + file.getAbsolutePath)
+
+    val writer = new java.io.PrintWriter(file)
+    try writer.write(code)
+    finally writer.close()
+  }
+
+  private def mkCodecs(jsonEng: Option[JsonEng], defs: List[Tree], path: List[String]) = {
+    val codecDefs = jsonEng match {
+      case Some(JsonEngs.Circe) => codecBuilder.mkCodec(defs, path)
+      case None => Nil
+      case a@_ => throw new Exception("Don't know JsonEng " + a)
+    }
+
     if (codecDefs.isEmpty) EmptyTree else q"object Implicits { ..$codecDefs }"
   }
 
   def fromSchemaMacroImpl(annottees: c.Expr[Any]*): c.Expr[Any] = {
-    val (fn, content, jsonEng, debug) = params(c.prefix.tree)
-    val schema = readSchema(fn, content)
+    val params = extractParams(c.prefix.tree)
+    val schema = params.schema
 
-    val result = annottees map (_.tree) match {
+    val result: Tree = annottees map (_.tree) match {
 
       // Add definitions and codecs to annotated object
       case (objDef @ q"$mods object $tname extends { ..$earlydefns } with ..$parents { $self => ..$stats }") :: _ => {
 
-        val path = List(tname.toString)
-        val defs = modelBuilder.mkSchemaDef(path, "Root", schema)
+        val (_, defs) = modelBuilder.mkSchemaDef("Root", schema)
 
         q"""
           $mods object $tname extends { ..$earlydefns } with ..$parents { $self =>
-            ..$defs
             ..$stats
-            ${ mkCodecs(jsonEng, defs, path) }
+
+            class enum extends scala.annotation.StaticAnnotation
+            class union extends scala.annotation.StaticAnnotation
+
+            ..$defs
+            ${ mkCodecs(params.jsonEnd, defs, tname.toString :: Nil) }
           }
         """
       }
@@ -108,11 +149,12 @@ class SchemaMacros(val c: Context) {
       case _ => c.abort(c.enclosingPosition, "Invalid annotation target: Needs to be an object !!")
     }
 
-    if (debug) println(showCode(result))
+    if (params.debug) println(showCode(result))
+
+    params.outPath match { case Some(path) => saveToFile(path, result); case None => /* noop */ }
+
     c.Expr[Any](result)
   }
 
 }
-
-
 

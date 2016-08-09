@@ -10,9 +10,70 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
   import u._
   import helpers._
 
-  def inEncoder(typ: Tree) = tq"io.circe.Encoder[$typ]"
+  val imports = q"import io.circe._"  :: q"import io.circe.syntax._" :: Nil
 
-  def inDecoder(typ: Tree) = tq"io.circe.Decoder[$typ]"
+  def inEncoder(typ: Tree) = tq"Encoder[$typ]"
+
+  def inDecoder(typ: Tree) = tq"Decoder[$typ]"
+
+  def mkUnionEncoder(path: List[String], typ: TypeName, subTypes: List[(Tree, Tree)]): Tree = {
+    val caseDefs = subTypes.map { case(rawType, unionType) =>
+      cq"ut: $unionType => ut.x.asJson"
+    }
+
+    val encDef = q"""
+    Encoder.instance { case ..$caseDefs }
+    """
+
+    encDef
+  }
+
+  def mkUnionDecoder(path: List[String], typ: TypeName, subTypes: List[(Tree, Tree)]): Tree = {
+
+    val asDefs: Tree = subTypes.tail.foldLeft(q"c.as[${subTypes.head._1}]") {
+      case (s:Tree, (rt:Tree, _)) => q"$s.orElse(c.as[$rt])"
+    }
+
+    val caseDefs = subTypes map { case (rawType, unionType) =>
+      cq"rt: $rawType => ${typeNameToTermName(unionType)}(rt)"
+    }
+
+    val decDef = q"""
+    Decoder.instance((c: HCursor) => {
+      val res = $asDefs
+      res.bimap(
+        (f) => DecodingFailure("Couldn't decode Items: " + c.focus.toString, f.history),
+        {
+          case ..$caseDefs
+          case rt@_ => throw new Exception("Don't know typ " + rt)
+        }
+      )
+    })
+    """
+
+    decDef
+  }
+
+  def mkEnumEncoder(path: List[String], typ: TypeName, subTermPairs: List[(String, Tree)]): Tree = {
+    // We can ignore subtypes and just encode based on supertype here
+    q"""Encoder.instance(e => parser.parse(e.json).toOption.get)"""
+  }
+
+  def mkEnumDecoder(path: List[String], typ: TypeName, subTermPairs: List[(String, Tree)]): Tree = {
+    val caseDefs = subTermPairs.map { case(jsonStr, subTerm) =>
+//      val term = mkSelectPath(path :+ (typ.toString + "Enum")  :+ subTerm.toString)
+      cq"j if j == parser.parse($jsonStr).toOption.get => cats.data.Xor.right($subTerm)"
+    }
+
+    val decDef = q"""
+    Decoder.instance((c: HCursor) => for {
+      json <- c.as[Json]
+      singleton <- json match { case ..$caseDefs; case _ => throw new Exception("Couldn't find enum:" + json.toString) }
+    } yield singleton)
+    """
+
+    decDef
+  }
 
   /**
     * Builds an Json encoder expression using Circe
@@ -21,7 +82,7 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
     * @param params The parameters of the class
     */
   def mkEncoder(path: List[String], typ: TypeName, params: List[Tree]): Tree = {
-    val valTerm = typeToTermName(typ)
+    val valTerm = TermName(typeToName(typ))
     val fullTyp = mkTypeSelectPath(path :+ typ.toString)
 
     val mappings = params.map { case q"$mods val $name: $tname = $default" =>
@@ -29,7 +90,7 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
     }
 
     val encDef = q"""
-    io.circe.Encoder.instance(($valTerm: $fullTyp) => Json.obj( ..$mappings ))
+    Encoder.instance(($valTerm: $fullTyp) => Json.obj( ..$mappings ))
     """
 
     encDef
@@ -42,14 +103,14 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
     * @param params The parameters of the class
     */
   def mkDecoder(path: List[String], typ: TypeName, params: List[Tree]): Tree = {
-    val (enums, vals) = params.foldLeft((List[Tree](), List[TermName]())) {
+    val (forVals, vals) = params.foldLeft((List[Tree](), List[TermName]())) {
       case ((es, vs), q"$mods val $name: $tname = $default") =>
         (es :+ fq"""$name <- c.downField(${name.toString}).as[$tname]""", vs :+ name)
     }
 
     val fullTermName = mkSelectPath(path :+ typ.toString)
     val decDef = q"""
-    io.circe.Decoder.instance((c: HCursor) => for(..$enums) yield $fullTermName(..$vals))
+    Decoder.instance((c: HCursor) => for(..$forVals) yield $fullTermName(..$vals))
     """
 
     decDef
