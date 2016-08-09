@@ -66,7 +66,7 @@ class ModelBuilder[U <: Universe](val u: U) {
     * @return List[Tree] containing all the definitions
     */
   def mkEnumDef(path: List[String], baseName: String, enum: List[String]): (Tree, List[Tree]) = {
-    val baseTyp = TypeName(baseName + "Enum")
+    val baseTyp = TypeName(baseName)
     val baseDef = q"@enum sealed trait $baseTyp extends scala.Product with scala.Serializable { def json: String }"
 
     val memberDefs = enum.map { m =>

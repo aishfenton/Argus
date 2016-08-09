@@ -1,6 +1,7 @@
 package argus.json
 
 import io.circe.Json
+import io.circe.Printer
 
 /**
   * @author Aish Fenton.
@@ -44,4 +45,5 @@ object JsonDiff {
     diffR(j1, j2)
   }
 
+  val NoNullPrinter = Printer.spaces2.copy(dropNullKeys = true)
 }

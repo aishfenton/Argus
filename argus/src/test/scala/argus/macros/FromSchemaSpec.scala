@@ -1,9 +1,14 @@
 package argus.macros
 
+import java.io.File
+
+import argus.json.JsonDiff
 import argus.schema.Schema
 import org.scalatest.{FlatSpec, Matchers}
 import io.circe._
 import io.circe.syntax._
+
+import scala.io.Source
 
 class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
 
@@ -250,11 +255,11 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
   }
 
   "Complex schema" should "work end to end" in {
-//    @fromSchemaResource("/vega-lite-schema.json", outPath=Some("/tmp/Vega.scala"))
-//    object Vega
-//    import Vega._
-//    import Vega.Implicits._
-//    import io.circe.syntax._
+    @fromSchemaResource("/vega-lite-schema.json")
+    object Vega
+    import Vega._
+    import Vega.Implicits._
+    import io.circe.syntax._
 
     val json =
       """
@@ -286,8 +291,58 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
         |}
         """.stripMargin
 
-//    val res = parser.decode[Root](json).toOption.get
-//    res.asJson should noDifferentFrom(json)
+    val res = parser.decode[RootUnion](json).toOption.get
+    res.asJson should noDifferentFrom(json)
   }
+
+  "Param: outPath=Some(*)" should "write out the generated code" in {
+    @fromSchemaResource("/simple.json", outPath=Some("/tmp/Simple.scala"))
+    object Simple
+
+    val file = new File("/tmp/Simple.scala")
+    file should exist
+
+    val lines = Source.fromFile(file).getLines.toList
+    lines.head should === ("object Simple {")
+    lines.size should be >= 10
+  }
+
+//  "Test" should "test" in {
+//    import .Implicits._
+//    import io.circe.syntax._
+//
+//    val json =
+//      """
+//        |{
+//        |  "description": "A bar chart showing the US population distribution of age groups and gender in 2000.",
+//        |  "data": { "url": "data/population.json"},
+//        |  "transform": {
+//        |    "filter": "datum.year == 2000",
+//        |    "calculate": [{"field": "gender", "expr": "datum.sex == 2 ? \"Female\" : \"Male\""}]
+//        |  },
+//        |  "mark": "bar",
+//        |  "encoding": {
+//        |    "x": {
+//        |      "field": "age", "type": "ordinal",
+//        |      "scale": {"bandSize": 17}
+//        |    },
+//        |    "y": {
+//        |      "aggregate": "sum", "field": "people", "type": "quantitative",
+//        |      "axis": {"title": "population"}
+//        |    },
+//        |    "color": {
+//        |      "field": "gender", "type": "nominal",
+//        |      "scale": {"range": ["#e377c2","#1f77b4"]}
+//        |    }
+//        |  },
+//        |  "config": {
+//        |    "mark": {"opacity": 0.6, "stacked" : "none"}
+//        |  }
+//        |}
+//      """.stripMargin
+//
+//    val res = parser.decode[RootUnion](json).toOption.get
+//    res.asJson should noDifferentFrom(json)
+//  }
 
 }

@@ -29,29 +29,14 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
   }
 
   def mkUnionDecoder(path: List[String], typ: TypeName, subTypes: List[(Tree, Tree)]): Tree = {
-
-    val asDefs: Tree = subTypes.tail.foldLeft(q"c.as[${subTypes.head._1}]") {
-      case (s:Tree, (rt:Tree, _)) => q"$s.orElse(c.as[$rt])"
+    val (rt, ut) = subTypes.head
+    val asDefs: Tree = subTypes.tail.foldLeft(q"c.as[$rt].map((x) => ${typeNameToTermName(ut)}(x))") {
+      case (s:Tree, (rt:Tree, ut: Tree)) => q"$s.orElse(c.as[$rt].map((x) => ${typeNameToTermName(ut)}(x)))"
     }
 
-    val caseDefs = subTypes map { case (rawType, unionType) =>
-      cq"rt: $rawType => ${typeNameToTermName(unionType)}(rt)"
-    }
-
-    val decDef = q"""
-    Decoder.instance((c: HCursor) => {
-      val res = $asDefs
-      res.bimap(
-        (f) => DecodingFailure("Couldn't decode Items: " + c.focus.toString, f.history),
-        {
-          case ..$caseDefs
-          case rt@_ => throw new Exception("Don't know typ " + rt)
-        }
-      )
-    })
+    q"""
+    Decoder.instance((c: HCursor) => { $asDefs })
     """
-
-    decDef
   }
 
   def mkEnumEncoder(path: List[String], typ: TypeName, subTermPairs: List[(String, Tree)]): Tree = {

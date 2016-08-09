@@ -68,14 +68,14 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
     val enums = "\"UK\"" :: "3.14" :: "1" :: Nil
     val (typ, res) = mb.mkEnumDef("Foo" :: Nil, "Bar", enums)
 
-    typ should === (tq"Foo.BarEnum")
+    typ should === (tq"Foo.Bar")
     res should === (
-      q"@enum sealed trait BarEnum extends scala.Product with scala.Serializable { def json: String }" ::
+      q"@enum sealed trait Bar extends scala.Product with scala.Serializable { def json: String }" ::
       q"""
       object BarEnums {
-        case object UK extends BarEnum { val json: String = "\"UK\"" }
-        case object n314 extends BarEnum { val json: String = "3.14" }
-        case object n1 extends BarEnum { val json: String = "1" }
+        case object UK extends Bar { val json: String = "\"UK\"" }
+        case object n314 extends Bar { val json: String = "3.14" }
+        case object n1 extends Bar { val json: String = "1" }
       }
       """ :: Nil
     )
@@ -93,7 +93,7 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
     val (_, res) = mb.mkEnumDef(Nil, "Foo", enums)
 
     val q"object FooEnums { ..$defs }" = res(1)
-    val names = defs map { case q"case object $name extends FooEnum {$x}" => name } map(_.toString)
+    val names = defs map { case q"case object $name extends Foo {$x}" => name } map(_.toString)
 
     names should === (List("AlbertBerty", "A1031437e5", "ABC"))
   }
@@ -191,7 +191,7 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
     val schema = schemaFromEnum("\"A\"" :: "\"B\"" :: Nil)
     val (typ, res) = mb.mkDef("Foo" :: Nil, "Bar", schema)
 
-    typ should === (tq"Foo.BarEnum")
+    typ should === (tq"Foo.Bar")
     showCode(res.head) should include ("@enum")
   }
 

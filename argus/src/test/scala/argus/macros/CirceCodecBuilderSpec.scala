@@ -104,16 +104,9 @@ class CirceCodecBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
 
     res should === (q"""
       Decoder.instance((c: HCursor) => {
-        val res = c.as[Int] orElse c.as[String] orElse c.as[Bar.Person]
-        res.bimap(
-          (f) => DecodingFailure("Couldn't decode Items: " + c.focus.toString, f.history),
-          {
-            case rt: Int => FooInt(rt)
-            case rt: String => Root.FooString(rt)
-            case rt: Bar.Person => FooBarPerson(rt)
-            case rt@_ => throw new Exception("Don't know typ " + rt)
-          }
-        )
+        c.as[Int].map((x) => FooInt(x)) orElse
+        c.as[String].map((x) => Root.FooString(x)) orElse
+        c.as[Bar.Person].map((x) => FooBarPerson(x))
       })
     """)
   }
@@ -215,8 +208,8 @@ class CirceCodecBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
       Nil
 
     val code = res map(showCode(_)) mkString("")
-    code should include("FooBarPerson(rt)")
-    code should include("FooInt(rt)")
+    code should include("FooBarPerson(x)")
+    code should include("FooInt(x)")
   }
 
 }

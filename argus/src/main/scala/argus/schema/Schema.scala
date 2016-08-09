@@ -155,15 +155,8 @@ object Schema {
 
   implicit val TypDecoder: Decoder[Typ] =
     Decoder.instance { c =>
-      val res = (c.as[List[SimpleType]] orElse c.as[SimpleType])
-      res.bimap(
-        (f) => DecodingFailure("Couldn't decode Typ: " + c.focus.toString, f.history),
-        {
-          case st: SimpleType => SimpleTypeTyp(st)
-          case lst: List[SimpleType] @unchecked => ListSimpleTypeTyp(lst)
-          case t@_ => throw new Exception("Don't know typ " + t)
-        }
-      )
+      (c.as[List[SimpleType]].map(ListSimpleTypeTyp(_))) orElse
+      (c.as[SimpleType].map(SimpleTypeTyp(_)))
     }
 
   implicit def TypEncoder: Encoder[Typ] =
@@ -239,15 +232,8 @@ object Schema {
 
   implicit val ItemsDecoder: Decoder[Items] =
     Decoder.instance { c =>
-      val res = (c.as[Root] orElse c.as[SchemaArray])
-      res.bimap(
-        (f) => DecodingFailure("Couldn't decode Items: " + c.focus.toString, f.history),
-        {
-          case r: Root => ItemsRoot(r)
-          case sa: SchemaArray @unchecked => ItemsSchemaArray(sa)
-          case t@_ => throw new Exception("Don't know typ " + t)
-        }
-      )
+      (c.as[Root].map(ItemsRoot(_))) orElse
+      (c.as[SchemaArray].map(ItemsSchemaArray(_)))
     }
 
   implicit def ItemsEncoder: Encoder[Items] =
