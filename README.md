@@ -127,6 +127,7 @@ case class Root(person: Option[Person] = None)
 
 ### OneOf (i.e. type A or B) 
 <table>
+<tr><td>Json</td><td>Generated Scala</td>
 <tr>
 <td><pre>
 {
@@ -147,6 +148,7 @@ case class RootDouble(...) extends RootUnion
 ### Enums
 
 <table>
+<tr><td>Json</td><td>Generated Scala</td>
 <tr>
 <td><pre>
 {
@@ -170,6 +172,7 @@ case class Root(countries: Option[Countries] = None)
 ### Arrays 
 
 <table>
+<tr><td>Json</td><td>Generated Scala</td>
 <tr>
 <td><pre>
 {

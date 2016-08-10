@@ -73,22 +73,9 @@ lazy val argus = project.
       "org.scalatest" %% "scalatest" % Vers.scalatest % "test"
     )
   )
-// settings(noPublishSettings: _*)
-
-lazy val argusExample = project.in(file("example")).
-  settings(moduleName := "argus-example").
-  dependsOn(argus).
-  settings(commonSettings: _*).
-  settings(
-    libraryDependencies ++= Seq(
-      "org.scalactic" %% "scalactic" % Vers.scalatest % "test",
-      "org.scalatest" %% "scalatest" % Vers.scalatest % "test"
-    )
-  ).
-  settings(noPublishSettings)
 
 lazy val root = (project in file(".")).
-  aggregate(argus, argusExample).
+  aggregate(argus).
   settings(commonSettings: _*).
   settings(noPublishSettings: _*)
 
