@@ -93,7 +93,7 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
     val (_, res) = mb.mkEnumDef(Nil, "Foo", enums)
 
     val q"object FooEnums { ..$defs }" = res(1)
-    val names = defs map { case q"case object $name extends Foo {$x}" => name } map(_.toString)
+    val names = defs map { case q"case object $name extends Foo { $_ }" => name } map(_.toString)
 
     names should === (List("AlbertBerty", "A1031437e5", "ABC"))
   }

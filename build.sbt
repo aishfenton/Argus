@@ -7,10 +7,9 @@ lazy val Vers = new {
 lazy val commonSettings = Seq(
   name := "Argus",
   organization := "com.github.aishfenton",
-  version := "0.0.1",
+  version := "0.1.0",
   scalaVersion := "2.11.8",
   scalacOptions += "-target:jvm-1.7",
-  crossScalaVersions := Seq("2.10.6", "2.11.8"),
   homepage := Some(url("https://github.com/aishfenton/Argus")),
   licenses := Seq("MIT License" -> url("http://www.opensource.org/licenses/MIT")),
 
@@ -61,14 +60,11 @@ lazy val argus = project.
     libraryDependencies ++= Seq(
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
       "org.scala-lang" % "scala-compiler" % scalaVersion.value % "provided",
-      "org.typelevel" %% "macro-compat" % "1.1.1",
-//      "com.chuusai" %% "shapeless" % "2.3.1",
 
       "io.circe" %% "circe-core" % Vers.circe,
       "io.circe" %% "circe-generic" % Vers.circe,
       "io.circe" %% "circe-parser" % Vers.circe,
 
-      "com.lihaoyi" %% "pprint" % "0.4.1",
       "org.scalactic" %% "scalactic" % Vers.scalatest % "test",
       "org.scalatest" %% "scalatest" % Vers.scalatest % "test"
     )
