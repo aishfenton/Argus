@@ -1,7 +1,9 @@
 # Argus
 
-Scala macros for generating code from [Json Schemas](http://json-schema.org). Everything defined in the
-schema has case classes and json encoders/decoders generated for it.
+Scala macros for generating code from [Json Schemas](http://json-schema.org). Structures defined within the
+schema (such as properties, enums, etc) are used to generate scala code at compile time.
+
+Json encoder/decoders are also generated using the Circe Json library.
 
 ## Quick Example
 
@@ -82,6 +84,7 @@ on which the Argonauts sailed.
 
 ## Supported constructs
 
+### Object templates (i.e. classes)
 <table>
 <tr><td>Json</td><td>Generated Scala</td>
 <tr>
@@ -98,6 +101,11 @@ on which the Argonauts sailed.
 case class Root(name: String, age: Option[Int] = None)
 </pre></td>
 </tr>
+</table>
+
+### Definitions (i.e. common class definitions)
+<table>
+<tr><td>Json</td><td>Generated Scala</td>
 <tr>
 <td><pre>
 {
@@ -110,11 +118,15 @@ case class Root(name: String, age: Option[Int] = None)
   }
 }
 </pre></td>
-<td class="highlight highlight-source-scala"><pre>
+<td><pre>
 case class Person(...)
 case class Root(person: Option[Person] = None)
 </pre></td>
 </tr>
+</table>
+
+### OneOf (i.e. type A or B) 
+<table>
 <tr>
 <td><pre>
 {
@@ -123,27 +135,71 @@ case class Root(person: Option[Person] = None)
     { "type" : "number" }
   ]
 }
-</pre></td>
-<td class="highlight highlight-source-scala"><pre>
+</div></pre></td>
+<td><pre>
 @union sealed trait RootUnion
 case class RootAddress(...) extends RootUnion
 case class RootDouble(...) extends RootUnion
 </pre></td>
 </tr>
+</table>
 
+### Enums
+
+<table>
+<tr>
+<td><pre>
+{
+  "properties": { 
+    "countries" : { "enum" : ["NZ", "US", "UK"] }
+  }
+}
+</div></pre></td>
+<td><pre>
+@enum sealed trait Countries
+object CountriesEnum {
+  case object NZ(...) extends Countries
+  case object US(...) extends Countries
+  ...
+}
+case class Root(countries: Option[Countries] = None)
+</pre></td>
+</tr>
+</table>
+
+### Arrays 
+
+<table>
+<tr>
+<td><pre>
+{
+  "properties": { 
+    "places" : { "items" : { "type": "string" } }
+  }
+}
+</div></pre></td>
+<td><pre>
+case class Root(places: Option[List[String]] = None)
+</pre></td>
+</tr>
 </table>
 
 
 ## Unsupported
 
+* Only Circe encoders/decoders are supported, although the skeleton is laid out for adding support for other Json libraries.
+
 * *anyOf* / *allOf*. Should be simple to add, just haven't done it yet.
 * *default*. Schemas can specify the default value to use for a field. Currently we just ignore these.
 * *not*. Not sure how you could specify this in a type language. Needs more thoughts
-* *additionalProperties*. Json schema lets you specify free-form properties too. These are unsupported 
+* *additionalProperties*, and *additionalItems*. Json schema lets you specify free-form properties too. These are unsupported 
 for now (maybe we could take a Map of them if specified?)
+* *patternProperties*. What should be the objects fields in this case? Maybe we just make it a Map?
+* *dependencies*. Dependencies can also extend the schema... sigh.
 * Any of the validation-only info, such as maxItems, since it doesn't contribute to the structure.
 
+And lastly: We only generate code from json schemas, but we can't generate json-schema from code. This is fully possible, but 
+requires work ;)
 
-# Todo
+There's still a lot to do! Looking for contributors to address any of above.
 
-There's still much that isn't 
