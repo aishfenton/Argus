@@ -295,7 +295,7 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     res.asJson should noDifferentFrom(json)
   }
 
-  "Param: outPath=Some(*)" should "write out the generated code" in {
+  "Params: outPath=Some(*)" should "write out the generated code" in {
     @fromSchemaResource("/simple.json", outPath=Some("/tmp/Simple.scala"))
     object Simple
 
@@ -305,6 +305,13 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     val lines = Source.fromFile(file).getLines.toList
     lines.head should === ("object Simple {")
     lines.size should be >= 10
+  }
+
+  "Params: name=*" should "write out the generated code" in {
+    @fromSchemaResource("/simple.json", name="Person")
+    object Schema
+
+    Schema.Person(age=Some(42)).age should === (Some(42))
   }
 
 //  "Test" should "test" in {

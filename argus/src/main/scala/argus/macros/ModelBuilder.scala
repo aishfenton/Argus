@@ -33,6 +33,9 @@ class ModelBuilder[U <: Universe](val u: U) {
     case _ => throw new Exception("Type isn't a known intrinsic type " + st)
   }
 
+  /**
+    * Main workhorse. Creates case-classes from given fields.
+    */
   def mkCaseClassDef(path: List[String], name: String, fields: List[Field],
                      requiredFields: Option[List[String]]): (Tree, List[Tree]) = {
 
@@ -127,46 +130,47 @@ class ModelBuilder[U <: Universe](val u: U) {
 
     (schema.$ref, schema.enum, schema.typ,  schema.oneOf, schema.multiOf) match {
 
-      // No type specified so either needs a ref, or ??
+      // Refs
       case (Some(ref),_,_,_,_) => {
         val toType = mkTypeSelectPath(extractPathFromRef(path.headOption, ref))
         mkTypeAlias(path, name, toType)
       }
 
+      // Enums
       case (_,Some(enum),_,_,_) => {
         mkEnumDef(path, name, enum)
       }
 
-      // Object, so look into properties to make a new Type
+      // Object (which defines a case-class)
       case (_,_,Some(SimpleTypeTyp(SimpleTypes.Object)),_,_) => {
         mkCaseClassDef(path, name, schema.properties.get, schema.required)
       }
 
-      // Array, create type alias to List wrapper of internal schema
+      // Array, create type alias to List of type defined by schema.items (which itself is a schema)
       case (_,_,Some(SimpleTypeTyp(SimpleTypes.Array)),_,_) => {
         val (toType, arrayDefs) = mkType(path, schema, name + "Item")
         val (typ, aliasDefs) = mkTypeAlias(path, name, toType)
         (typ, arrayDefs ++ aliasDefs)
       }
 
-      case (_,_,Some(ListSimpleTypeTyp(list)),_,_) => throw new UnsupportedOperationException("Lists of simple types aren't supported yet")
-
-      // Make intrinsic type alias
+      // Alias to an intrinsic type
       case (_,_,Some(SimpleTypeTyp(st: SimpleType)),_,_) if IntrinsicType.contains(st) => {
         mkTypeAlias(path, name, mkIntrinsicType(st))
       }
 
-      // Handle oneOfs
+      // OneOfs (aka Union types)
       case (_,_,_,Some(schemas),_) => {
         mkUnionTypeDef(path, name, schemas)
       }
 
-      // Handle all or anyOfs and allOfs
+      // AnyOfs and AllOfs (aka List of type)
+      // TODO
       case (_,_,_,_,Some(schemas)) => {
-        // TODO
-//        List(mkTypeAlias(name, mkIntrinsicType(st)))
+        // List(mkTypeAlias(name, mkIntrinsicType(st)))
         (EmptyTree, Nil)
       }
+
+      case (_,_,Some(ListSimpleTypeTyp(list)),_,_) => throw new UnsupportedOperationException("Lists of simple types aren't supported yet")
 
       case _ => (EmptyTree, Nil) // noop for empty schema
 
@@ -195,6 +199,11 @@ class ModelBuilder[U <: Universe](val u: U) {
 
       // A $ref takes precedence over everything
       case (_,Some(ref),_,_,_) => {
+
+        // XXX This is a bit broken. It works if the type exactly matches the reference string. But that's not
+        // always the case (e.g. union types have "union" attached to end of their name). Ideally we'd maintain a mapping
+        // of refs -> types, and then resolve references in some kind of linking stage. Leaving this for now, but will
+        // need to be fixed at some point.
         val typ = mkTypeSelectPath(extractPathFromRef(path.headOption, ref))
         (typ, defDefs)
       }

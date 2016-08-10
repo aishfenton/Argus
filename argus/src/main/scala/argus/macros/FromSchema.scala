@@ -20,9 +20,11 @@ object JsonEngs {
   *                Some(JsonEngs.Circe) or None
   * @param outPath Optional path, that if specified writes the generated code to a file at that path (defaults to None,
   *                so no file is written).
+  * @param name The name used for the root case class that is generated. Defaults to "Root"
   */
 @compileTimeOnly("You must enable the macro paradise plugin.")
-class fromSchemaJson(json: String, debug: Boolean = false, jsonEng: Option[JsonEng] = None, outPath: Option[String] = None) extends StaticAnnotation {
+class fromSchemaJson(json: String, debug: Boolean = false, jsonEng: Option[JsonEng] = None, outPath: Option[String] = None,
+                     name: String = "Root") extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro SchemaMacros.fromSchemaMacroImpl
 }
 
@@ -34,9 +36,11 @@ class fromSchemaJson(json: String, debug: Boolean = false, jsonEng: Option[JsonE
   *                Some(JsonEngs.Circe) or None
   * @param outPath Optional path, that if specified writes the generated code to a file at that path (defaults to None,
   *                so no file is written).
+  * @param name The name used for the root case class that is generated. Defaults to "Root"
   */
 @compileTimeOnly("You must enable the macro paradise plugin.")
-class fromSchemaResource(path: String, debug: Boolean = false, jsonEng: Option[JsonEng] = None, outPath: Option[String] = None) extends StaticAnnotation {
+class fromSchemaResource(path: String, debug: Boolean = false, jsonEng: Option[JsonEng] = None, outPath: Option[String] = None,
+                         name: String = "Root") extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro SchemaMacros.fromSchemaMacroImpl
 }
 
@@ -48,9 +52,11 @@ class fromSchemaResource(path: String, debug: Boolean = false, jsonEng: Option[J
   *                Some(JsonEngs.Circe) or None
   * @param outPath Optional path, that if specified writes the generated code to a file at that path (defaults to None,
   *                so no file is written).
+  * @param name The name used for the root case class that is generated. Defaults to "Root"
   */
 @compileTimeOnly("You must enable the macro paradise plugin.")
-class fromSchemaURL(url: String, debug: Boolean = false, jsonEng: Option[JsonEng] = None, outPath: Option[String]) extends StaticAnnotation {
+class fromSchemaURL(url: String, debug: Boolean = false, jsonEng: Option[JsonEng] = None, outPath: Option[String],
+                    name: String = "Root") extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro SchemaMacros.fromSchemaMacroImpl
 }
 
@@ -64,13 +70,14 @@ class SchemaMacros(val c: Context) {
   private val helpers = new ASTHelpers[c.universe.type](c.universe)
   import helpers._
 
-  case class Params(schema: Schema.Root, debug: Boolean, jsonEnd: Option[JsonEng], outPath: Option[String])
+  case class Params(schema: Schema.Root, debug: Boolean, jsonEnd: Option[JsonEng], outPath: Option[String], name: String)
 
   private def extractParams(prefix: Tree): Params = {
     val q"new $name (..$paramASTs)" = prefix
     val (Ident(TypeName(fn: String))) = name
 
-    val commonParams = ("debug", false) :: ("jsonEng", q"Some(JsonEngs.Circe)") :: ("outPath", None) :: Nil
+    val commonParams = ("debug", false) :: ("jsonEng", q"Some(JsonEngs.Circe)") :: ("outPath", None) ::
+                       ("name", "Root") :: Nil
 
     val params = fn match {
       case "fromSchemaResource" => {
@@ -94,7 +101,8 @@ class SchemaMacros(val c: Context) {
       params("schema").asInstanceOf[Schema.Root],
       params("debug").asInstanceOf[Boolean],
       params("jsonEng") match { case q"Some(JsonEngs.Circe)" => Some(JsonEngs.Circe); case q"None" => None },
-      params("outPath").asInstanceOf[Option[String]]
+      params("outPath").asInstanceOf[Option[String]],
+      params("name").asInstanceOf[String]
     )
   }
 
@@ -131,7 +139,7 @@ class SchemaMacros(val c: Context) {
       // Add definitions and codecs to annotated object
       case (objDef @ q"$mods object $tname extends { ..$earlydefns } with ..$parents { $self => ..$stats }") :: _ => {
 
-        val (_, defs) = modelBuilder.mkSchemaDef("Root", schema)
+        val (_, defs) = modelBuilder.mkSchemaDef(params.name, schema)
 
         q"""
           $mods object $tname extends { ..$earlydefns } with ..$parents { $self =>
