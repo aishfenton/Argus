@@ -39,8 +39,6 @@ Starting with this Json schema.
 }
 ```
 
-Many more examples [here](argus/src/test/scala/argus/macros/FromSchemaSpec.scala)
-
 We can use the @fromSchemaResource macro to generate case classes for (Root, Address)
 
 ```scala
@@ -75,6 +73,8 @@ val newPerson = person.copy(address=Some(address))
 // Encode base to json
 newPerson.asJson 
 ```
+
+Many more examples [here](argus/src/test/scala/argus/macros/FromSchemaSpec.scala)
 
 **NB:**
 Why Argus? In keeping with the theme of Argonaut and Circe, Argus (son of Arestor) was the builder of the ship "Argo", 
@@ -184,11 +184,9 @@ case class Root(places: Option[List[String]] = None)
 </tr>
 </table>
 
-
 ## Unsupported
 
 * Only Circe encoders/decoders are supported, although the skeleton is laid out for adding support for other Json libraries.
-
 * *anyOf* / *allOf*. Should be simple to add, just haven't done it yet.
 * *default*. Schemas can specify the default value to use for a field. Currently we just ignore these.
 * *not*. Not sure how you could specify this in a type language. Needs more thoughts
@@ -203,3 +201,45 @@ requires work ;)
 
 There's still a lot to do! Looking for contributors to address any of above.
 
+# Usage Tips
+
+1. All macros support arguments ```debug=true``` and ```outPath="..."```. ```debug``` causes the generated 
+code to be dumped to stdout, and ```outPath``` causes the generated code to be written to a file.
+    ```scala
+    @fromSchemaResource("/simple.json", debug=true, outPath="/tmp/Simple.Scala")
+    object Test
+    ```
+
+2. You can generate code from inline json schemas. Also supported are ```fromSchemaInputStream```
+and ```fromSchemaURL``` too.
+    ```scala
+    @fromSchemaJson("""
+    {
+      "properties" : { 
+        "name" : { "type" : "string" },
+        "age"  : { "type" : "integer" }
+      },
+      "required" : ["name"]
+    }
+    """)
+    object Schema
+    ```
+
+3. You can name the root class that is generated via the ```name="..."``` argument.
+    ```scala
+    @fromSchemaResource("/simple.json", name="Person")
+    object Schema
+    import Schema.Person
+    ```
+
+4. Within the object we also generate json encoder/decoder implicit variables, but you need to import 
+them into scope. 
+    ```scala
+    @fromSchemaResource("/simple.json", name="Person")
+    object Schema
+    import Schema._
+    import Schema.Implicits._
+    
+    Person(...).asJson
+    ```
+ 
