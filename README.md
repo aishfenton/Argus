@@ -98,7 +98,6 @@ on which the Argonauts sailed.
 case class Root(name: String, age: Option[Int] = None)
 </pre></td>
 </tr>
-
 <tr>
 <td><pre>
 {
@@ -111,12 +110,11 @@ case class Root(name: String, age: Option[Int] = None)
   }
 }
 </pre></td>
-<td><pre>
+<td class="highlight highlight-source-scala"><pre>
 case class Person(...)
 case class Root(person: Option[Person] = None)
 </pre></td>
 </tr>
-
 <tr>
 <td><pre>
 {
@@ -126,7 +124,7 @@ case class Root(person: Option[Person] = None)
   ]
 }
 </pre></td>
-<td><pre>
+<td class="highlight highlight-source-scala"><pre>
 @union sealed trait RootUnion
 case class RootAddress(...) extends RootUnion
 case class RootDouble(...) extends RootUnion
