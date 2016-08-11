@@ -170,7 +170,7 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     val address = Address(Some(31), Some("Main St"))
     val root = Root(Some(List("Bob", "Smith")), Some(26), Some(address), Some(123))
 
-    root.asJson should noDifferentFrom ("""
+    root.asJson should beNoDifferentFrom ("""
       |{
       |  "name" : [ "Bob", "Smith" ],
       |  "age" : 26,
@@ -183,30 +183,8 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     """.stripMargin)
   }
 
-  it should "have an encoder for each enum type" in {
-    @fromSchemaJson("""
-    {
-      "type": "object",
-      "properties": {
-        "country": { "enum": ["UK", "USA", "NZ"] }
-      }
-    }
-    """, jsonEng=Some(JsonEngs.Circe))
-    object Foo
-    import Foo._
-    import Foo.Implicits._
-    import io.circe.syntax._
-
-    val root = Root(Some(Root.CountryEnums.NZ))
-    root.asJson should noDifferentFrom ("""
-      |{
-      |  "country": "NZ"
-      |}
-    """.stripMargin)
-  }
-
-  "Building Circe Codecs" should "have a decoder for each case class" in {
-    @fromSchemaResource("/simple.json", jsonEng=Some(JsonEngs.Circe))
+  it should "have a decoder for each case class" in {
+    @fromSchemaResource("/simple.json")
     object Foo
     import Foo._
     import Foo.Implicits._
@@ -230,6 +208,28 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     root.erdosNumber === (Some(123))
   }
 
+  it should "have an encoder for each enum type" in {
+    @fromSchemaJson("""
+    {
+      "type": "object",
+      "properties": {
+        "country": { "enum": ["UK", "USA", "NZ"] }
+      }
+    }
+    """)
+    object Foo
+    import Foo._
+    import Foo.Implicits._
+    import io.circe.syntax._
+
+    val root = Root(Some(Root.CountryEnums.NZ))
+    root.asJson should beNoDifferentFrom ("""
+      |{
+      |  "country": "NZ"
+      |}
+    """.stripMargin)
+  }
+
   it should "have a decoder for each enum type" in {
     @fromSchemaJson("""
     {
@@ -238,7 +238,7 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
         "country": { "enum": ["UK", "USA", "NZ"] }
       }
     }
-    """, jsonEng=Some(JsonEngs.Circe))
+    """)
     object Foo
     import Foo._
     import Foo.Implicits._
@@ -252,6 +252,31 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     val root = parser.decode[Root](json).toOption.get
 
     root.country should === (Some(Root.CountryEnums.NZ))
+  }
+
+  it should "let you override encoders/decoders with higher priority implicits" in {
+    @fromSchemaJson("""
+    {
+      "type": "object",
+      "properties": {
+        "name": { "type" : "string" }
+      }
+    }
+    """)
+    object Foo
+    import Foo._
+
+    object Implicits extends Foo.LowPriorityImplicits {
+      implicit val betterEncoder: Encoder[Foo.Root] = Encoder.instance { r => "override".asJson }
+      implicit val betterDecoder: Decoder[Foo.Root] = Decoder.instance((h: HCursor) =>
+        cats.data.Xor.right(Root(name=Some("override")))
+      )
+    }
+    import Implicits._
+
+    val root = parser.decode[Root]("""{ "name": "fred" }""").toOption.get
+    root.name should === (Some("override"))
+    root.copy(name=Some("james")).asJson should beNoDifferentFrom("\"override\"")
   }
 
   "Complex schema" should "work end to end" in {
@@ -292,10 +317,10 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
         """.stripMargin
 
     val res = parser.decode[RootUnion](json).toOption.get
-    res.asJson should noDifferentFrom(json)
+    res.asJson should beNoDifferentFrom(json)
   }
 
-  "Params: outPath=Some(*)" should "write out the generated code" in {
+  "Params" should "support outPath and write out the generated code" in {
     @fromSchemaResource("/simple.json", outPath=Some("/tmp/Simple.scala"))
     object Simple
 
@@ -307,7 +332,7 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     lines.size should be >= 10
   }
 
-  "Params: name=*" should "write out the generated code" in {
+  it should "support name, and name the root element using it" in {
     @fromSchemaResource("/simple.json", name="Person")
     object Schema
 

@@ -247,4 +247,17 @@ them into scope.
     
     Person(...).asJson
     ```
- 
+5. You can override specific Encoders/Decoders. All implicits are baked into a trait called LowPriorityImplicits.
+Rather than importing Foo.Implicits you can make your own implicits object that extends this and provides overrides.
+For example:
+```scala
+@fromSchemaResource("/simple.json")
+object Foo
+import Foo._
+
+object BetterImplicits extends Foo.LowPriorityImplicits {
+  implicit val myEncoder: Encoder[Foo.Root] =   ... 
+  implicit val betterDecoder: Decoder[Foo.Root] = ...
+}
+import BetterImplicits._
+```

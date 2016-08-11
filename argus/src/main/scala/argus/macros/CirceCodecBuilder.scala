@@ -46,7 +46,6 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
 
   def mkEnumDecoder(path: List[String], typ: TypeName, subTermPairs: List[(String, Tree)]): Tree = {
     val caseDefs = subTermPairs.map { case(jsonStr, subTerm) =>
-//      val term = mkSelectPath(path :+ (typ.toString + "Enum")  :+ subTerm.toString)
       cq"j if j == parser.parse($jsonStr).toOption.get => cats.data.Xor.right($subTerm)"
     }
 

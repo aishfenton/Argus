@@ -5,16 +5,17 @@ import org.scalactic.Equality
 import io.circe._
 import org.scalatest.matchers.{ MatchResult, Matcher }
 
+// TODO Should refactor this into somewhere generally useful.
 trait JsonMatchers {
 
-  def noDifferentFrom(jrStr: String): Matcher[Json] = new Matcher[Json] {
+  def beNoDifferentFrom(jrStr: String): Matcher[Json] = new Matcher[Json] {
     def apply(jl: Json) = {
       val jr = parser.parse(jrStr).toOption.get
-      noDifferentFrom(jr)(jl)
+      beNoDifferentFrom(jr)(jl)
     }
   }
 
-  def noDifferentFrom(jr: Json): Matcher[Json] = new Matcher[Json] {
+  def beNoDifferentFrom(jr: Json): Matcher[Json] = new Matcher[Json] {
     def apply(jl: Json) = {
       val diff = JsonDiff.diff(jl, jr)
       MatchResult(diff.isEmpty, "Differences found in json: " + diff.mkString(","), "No differences found!")

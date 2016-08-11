@@ -120,14 +120,19 @@ class SchemaMacros(val c: Context) {
     finally writer.close()
   }
 
-  private def mkCodecs(jsonEng: Option[JsonEng], defs: List[Tree], path: List[String]) = {
+  private def mkCodecs(jsonEng: Option[JsonEng], defs: List[Tree], path: List[String]): List[Tree] = {
     val codecDefs = jsonEng match {
       case Some(JsonEngs.Circe) => codecBuilder.mkCodec(defs, path)
       case None => Nil
       case a@_ => throw new Exception("Don't know JsonEng " + a)
     }
 
-    if (codecDefs.isEmpty) EmptyTree else q"object Implicits { ..$codecDefs }"
+    if (codecDefs.isEmpty)
+      Nil
+    else
+      q"trait LowPriorityImplicits { ..$codecDefs }" ::
+      q"object Implicits extends LowPriorityImplicits" ::
+      Nil
   }
 
   def fromSchemaMacroImpl(annottees: c.Expr[Any]*): c.Expr[Any] = {
@@ -149,7 +154,7 @@ class SchemaMacros(val c: Context) {
             class union extends scala.annotation.StaticAnnotation
 
             ..$defs
-            ${ mkCodecs(params.jsonEnd, defs, tname.toString :: Nil) }
+            ..${ mkCodecs(params.jsonEnd, defs, tname.toString :: Nil) }
           }
         """
       }
