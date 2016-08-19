@@ -1,6 +1,8 @@
 package argus.macros
 
 import org.scalactic.Equality
+import org.scalatest.matchers.{ MatchResult, Matcher }
+import scala.tools.reflect.ToolBox
 
 /**
   * @author Aish Fenton.
@@ -9,6 +11,8 @@ trait ASTMatchers {
 
   val runtimeUniverse = scala.reflect.runtime.universe
   import runtimeUniverse._
+  import scala.reflect.runtime.currentMirror
+  val toolbox = currentMirror.mkToolBox()
 
   // For testing equality between trees in tests
   implicit val treeEq = new Equality[Tree] {

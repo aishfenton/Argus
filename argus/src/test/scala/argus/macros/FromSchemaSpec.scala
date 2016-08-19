@@ -161,7 +161,7 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     implicitly[Names =:= List[String]]
   }
 
-  "Building Circe Codecs" should "have an encoder for each case class" in {
+  "Building Circe Codecs" should "encode case classes" in {
     @fromSchemaResource("/simple.json", jsonEng=Some(JsonEngs.Circe))
     object Foo
     import Foo._
@@ -170,7 +170,7 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     val address = Address(Some(31), Some("Main St"))
     val root = Root(Some(List("Bob", "Smith")), Some(26), Some(address), Some(123))
 
-    root.asJson should beNoDifferentFrom ("""
+    root.asJson should beSameJsonAs ("""
       |{
       |  "name" : [ "Bob", "Smith" ],
       |  "age" : 26,
@@ -183,7 +183,7 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     """.stripMargin)
   }
 
-  it should "have a decoder for each case class" in {
+  it should "decode case classes" in {
     @fromSchemaResource("/simple.json")
     object Foo
     import Foo._
@@ -208,7 +208,7 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     root.erdosNumber === (Some(123))
   }
 
-  it should "have an encoder for each enum type" in {
+  it should "encode enum types" in {
     @fromSchemaJson("""
     {
       "type": "object",
@@ -223,14 +223,14 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     import io.circe.syntax._
 
     val root = Root(Some(Root.CountryEnums.NZ))
-    root.asJson should beNoDifferentFrom ("""
+    root.asJson should beSameJsonAs ("""
       |{
       |  "country": "NZ"
       |}
     """.stripMargin)
   }
 
-  it should "have a decoder for each enum type" in {
+  it should "decode enum type" in {
     @fromSchemaJson("""
     {
       "type": "object",
@@ -252,6 +252,78 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     val root = parser.decode[Root](json).toOption.get
 
     root.country should === (Some(Root.CountryEnums.NZ))
+  }
+
+  it should "encode any wrappers" in {
+    @fromSchemaJson("""
+    {
+      "type": "object",
+      "properties": {
+        "misc": { }
+      }
+    }
+    """)
+    object Foo
+    import Foo._
+    import Foo.Implicits._
+
+    val values = Map("a" -> 1, "b" -> List(1.1, 2.2), "c" -> Map( "d" -> "bar", "e" -> 3.14 ))
+    val root = Root(Some(Root.Misc(values)))
+
+    root.asJson should beSameJsonAs("""
+    {
+      "misc": { "a": 1, "b": [1.1, 2.2], "c": { "d": "bar", "e": 3.14 } }
+    }
+    """)
+  }
+
+  it should "encode any wrappers with array types (which need special handling)" in {
+      @fromSchemaJson("""
+    {
+      "type": "object",
+      "properties": {
+        "misc": { }
+      }
+    }
+    """)
+    object Foo
+    import Foo._
+    import Foo.Implicits._
+
+    val values = Array(Array("a", 1), Array(1), Array(2.2), Array(3L), Array(true), Array(3.toShort),
+                       Array(3.0f), Array("a"), Array(2, 2.2))
+    val root = Root(Some(Root.Misc(values)))
+
+    root.asJson should beSameJsonAs("""
+    {
+      "misc": [ ["a", 1], [1], [2.2], [3], [true], [3], [3.0], ["a"], [2, 2.2] ]
+    }
+    """)
+  }
+
+  it should "decode any wrappers" in {
+    @fromSchemaJson("""
+    {
+      "type": "object",
+      "properties": {
+        "misc": { }
+      }
+    }
+    """)
+    object Foo
+    import Foo._
+    import Foo.Implicits._
+
+    val json =
+      """
+        |{
+        |  "misc": { "a": 1, "b": [1, 2.0, "foo"], "c": { "d": "bar" } }
+        |}
+      """.stripMargin
+
+    val root = parser.decode[Root](json).toOption.get
+    val values = Map("a" -> 1, "b" -> List(1, 2.0, "foo"), "c" -> Map( "d" -> "bar" ))
+    root.misc should === (Some(Root.Misc(values)))
   }
 
   it should "let you override encoders/decoders with higher priority implicits" in {
@@ -276,10 +348,29 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
 
     val root = parser.decode[Root]("""{ "name": "fred" }""").toOption.get
     root.name should === (Some("override"))
-    root.copy(name=Some("james")).asJson should beNoDifferentFrom("\"override\"")
+    root.copy(name=Some("james")).asJson should beSameJsonAs("\"override\"")
   }
 
-  "Complex schema" should "work end to end" in {
+  "Params" should "support outPath and write out the generated code" in {
+    @fromSchemaResource("/simple.json", outPath=Some("/tmp/Simple.scala"))
+    object Simple
+
+    val file = new File("/tmp/Simple.scala")
+    file should exist
+
+    val lines = Source.fromFile(file).getLines.toList
+    lines.head should === ("object Simple {")
+    lines.size should be >= 10
+  }
+
+  it should "support name, and name the root element using it" in {
+    @fromSchemaResource("/simple.json", name="Person")
+    object Schema
+
+    Schema.Person(age=Some(42)).age should === (Some(42))
+  }
+
+  "Complex example" should "work end to end" in {
     @fromSchemaResource("/vega-lite-schema.json")
     object Vega
     import Vega._
@@ -290,7 +381,7 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
       """
         |{
         |  "description": "A bar chart showing the US population distribution of age groups and gender in 2000.",
-        |  "data": { "url": "data/population.json"},
+        |  "data": { "values": [ {"a": 1, "b" : 2.0, "c": "NZ" }, {"a": 2, "b": 3.14, "c": "US" } ] },
         |  "transform": {
         |    "filter": "datum.year == 2000",
         |    "calculate": [{"field": "gender", "expr": "datum.sex == 2 ? \"Female\" : \"Male\""}]
@@ -314,67 +405,10 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
         |    "mark": {"opacity": 0.6, "stacked" : "none"}
         |  }
         |}
-        """.stripMargin
+      """.stripMargin
 
     val res = parser.decode[RootUnion](json).toOption.get
-    res.asJson should beNoDifferentFrom(json)
+    res.asJson should beSameJsonAs(json)
   }
-
-  "Params" should "support outPath and write out the generated code" in {
-    @fromSchemaResource("/simple.json", outPath=Some("/tmp/Simple.scala"))
-    object Simple
-
-    val file = new File("/tmp/Simple.scala")
-    file should exist
-
-    val lines = Source.fromFile(file).getLines.toList
-    lines.head should === ("object Simple {")
-    lines.size should be >= 10
-  }
-
-  it should "support name, and name the root element using it" in {
-    @fromSchemaResource("/simple.json", name="Person")
-    object Schema
-
-    Schema.Person(age=Some(42)).age should === (Some(42))
-  }
-
-//  "Test" should "test" in {
-//    import .Implicits._
-//    import io.circe.syntax._
-//
-//    val json =
-//      """
-//        |{
-//        |  "description": "A bar chart showing the US population distribution of age groups and gender in 2000.",
-//        |  "data": { "url": "data/population.json"},
-//        |  "transform": {
-//        |    "filter": "datum.year == 2000",
-//        |    "calculate": [{"field": "gender", "expr": "datum.sex == 2 ? \"Female\" : \"Male\""}]
-//        |  },
-//        |  "mark": "bar",
-//        |  "encoding": {
-//        |    "x": {
-//        |      "field": "age", "type": "ordinal",
-//        |      "scale": {"bandSize": 17}
-//        |    },
-//        |    "y": {
-//        |      "aggregate": "sum", "field": "people", "type": "quantitative",
-//        |      "axis": {"title": "population"}
-//        |    },
-//        |    "color": {
-//        |      "field": "gender", "type": "nominal",
-//        |      "scale": {"range": ["#e377c2","#1f77b4"]}
-//        |    }
-//        |  },
-//        |  "config": {
-//        |    "mark": {"opacity": 0.6, "stacked" : "none"}
-//        |  }
-//        |}
-//      """.stripMargin
-//
-//    val res = parser.decode[RootUnion](json).toOption.get
-//    res.asJson should noDifferentFrom(json)
-//  }
 
 }

@@ -96,17 +96,19 @@ class ModelBuilder[U <: Universe](val u: U) {
     val baseTyp = TypeName(baseName + "Union")
     val baseDef = q"@union sealed trait $baseTyp extends scala.Product with scala.Serializable"
 
-    val (memberDefs, defDefs) = schemas.zipWithIndex.foldLeft(List[Tree](), List[Tree]()) { case((md, dd), (schema, i)) =>
+    val (memberDefs, defDefs) = schemas.zipWithIndex.foldLeft(List[Tree](), List[Tree]()) {
+      case((md, dd), (schema, i)) =>
 
-      // Hopefully we don't have to use this, but if one of the schema's is an anonymous type then we don't have much
-      // choice
-      val defaultName = baseName + (i + 1).toString
-      val (typ, defs) = mkType(path, schema, defaultName)
-      val suffix = helpers.typeToName(typ).capitalize
+        // Hopefully we don't have to use this, but if one of the schema's is an anonymous type then we don't have much
+        // choice
+        val defaultName = baseName + (i + 1).toString
+        val (typ, defs) = mkType(path, schema, defaultName)
 
-      val name = TypeName(baseName + suffix)
-      val memberDef = q"case class $name(x: $typ) extends $baseTyp"
-      (md :+ memberDef,  dd ++ defs)
+        // E.g. FooInt
+        val name = TypeName(baseName + nameFromType(typ, false))
+
+        val memberDef = q"case class $name(x: $typ) extends $baseTyp"
+        (md :+ memberDef,  dd ++ defs)
 
     }
 
@@ -172,7 +174,10 @@ class ModelBuilder[U <: Universe](val u: U) {
 
       case (_,_,Some(ListSimpleTypeTyp(list)),_,_) => throw new UnsupportedOperationException("Lists of simple types aren't supported yet")
 
-      case _ => (EmptyTree, Nil) // noop for empty schema
+      // Nothing in the schema? Then nothing to define
+      case _ => {
+        (EmptyTree, Nil)
+      }
 
     }
 
@@ -237,14 +242,28 @@ class ModelBuilder[U <: Universe](val u: U) {
         mkSchemaDef(defaultName, schema, path)
       }
 
-      // XXX Otherwise, assume type String?? Not sure what else to do if there's no type specified. It needs to be something
-      // that is encodable.
+      // If not type info specified then we have no option but to make it a map of strings (field names) to anys (values)
+      // this is going to requiring runtime casts to do anything useful with them, but what else is can we do?
       case _ => {
-        (tq"String", defDefs)
+        val (typ, anyDef) = mkAnyWrapper(path, defaultName)
+        (typ, defDefs ++ anyDef)
       }
 
     }
 
+  }
+
+  /**
+    * If there's no schema specified what do we do? It seems this leaves the json open to be anything. The best we can do
+    * is make it an Any type, but to stop things getting too far out of control we wrap it in a type so that we can
+    * maintain some control over the encoding/decodng (and allow for customization).
+    *
+    * @param path The package path to where this is type is defined.
+    * @param name The name of the wrapper class.
+    */
+  def mkAnyWrapper(path: List[String], name: String): (Tree, List[Tree]) = {
+    val typ = mkTypeSelectPath(path :+ name)
+    (typ, q"case class ${TypeName(name)}(x: Any)" :: Nil)
   }
 
   /**
@@ -295,5 +314,6 @@ class ModelBuilder[U <: Universe](val u: U) {
 
     (typ, fieldDefs ++ rootDefs)
   }
+
 
 }

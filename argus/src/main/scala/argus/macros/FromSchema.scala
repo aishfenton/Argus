@@ -1,7 +1,6 @@
 package argus.macros
 
 import argus.schema._
-import macrocompat.bundle
 
 import scala.annotation.{StaticAnnotation, compileTimeOnly}
 import scala.language.experimental.macros
@@ -61,7 +60,6 @@ class fromSchemaURL(url: String, debug: Boolean = false, jsonEng: Option[JsonEng
 }
 
 
-@bundle
 class SchemaMacros(val c: Context) {
   import c.universe._
 

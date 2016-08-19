@@ -189,6 +189,25 @@ case class Root(places: Option[List[String]] = None)
 </tr>
 </table>
 
+### Any Types (i.e. when a field can take arbitrary values)
+
+<table>
+<tr><td>Json</td><td>Generated Scala</td>
+<tr>
+<td><pre>
+{
+  "properties": { 
+    "values" : { }
+  }
+}
+</div></pre></td>
+<td><pre>
+case class Values(x: Any)
+case class Root(values: Option[Values] = None)
+</pre></td>
+</tr>
+</table>
+
 ## Unsupported
 
 * Only Circe encoders/decoders are supported, although the skeleton is laid out for adding support for other Json libraries.
@@ -196,7 +215,7 @@ case class Root(places: Option[List[String]] = None)
 * *default*. Schemas can specify the default value to use for a field. Currently we just ignore these.
 * *not*. Not sure how you could specify this in a type language. Needs more thoughts
 * *additionalProperties*, and *additionalItems*. Json schema lets you specify free-form properties too. These are unsupported 
-for now (maybe we could take a Map of them if specified?)
+for now (although I think this should be easy now there's supprot for Any types)
 * *patternProperties*. What should be the objects fields in this case? Maybe we just make it a Map?
 * *dependencies*. Dependencies can also extend the schema... sigh.
 * Any of the validation-only info, such as maxItems, since it doesn't contribute to the structure.
@@ -210,13 +229,15 @@ There's still a lot to do! Looking for contributors to address any of above.
 
 1. All macros support arguments ```debug=true``` and ```outPath="..."```. ```debug``` causes the generated 
 code to be dumped to stdout, and ```outPath``` causes the generated code to be written to a file.
+ 
     ```scala
     @fromSchemaResource("/simple.json", debug=true, outPath="/tmp/Simple.Scala")
     object Test
     ```
 
-2. You can generate code from inline json schemas. Also supported are ```fromSchemaInputStream```
+3. You can generate code from inline json schemas. Also supported are ```fromSchemaInputStream```
 and ```fromSchemaURL``` too.
+
     ```scala
     @fromSchemaJson("""
     {
@@ -230,15 +251,17 @@ and ```fromSchemaURL``` too.
     object Schema
     ```
 
-3. You can name the root class that is generated via the ```name="..."``` argument.
+4. You can name the root class that is generated via the ```name="..."``` argument.
+ 
     ```scala
     @fromSchemaResource("/simple.json", name="Person")
     object Schema
     import Schema.Person
     ```
 
-4. Within the object we also generate json encoder/decoder implicit variables, but you need to import 
+5. Within the object we also generate json encoder/decoder implicit variables, but you need to import 
 them into scope. 
+
     ```scala
     @fromSchemaResource("/simple.json", name="Person")
     object Schema
@@ -247,17 +270,54 @@ them into scope.
     
     Person(...).asJson
     ```
-5. You can override specific Encoders/Decoders. All implicits are baked into a trait called LowPriorityImplicits.
+6. You can override specific Encoders/Decoders. All implicits are baked into a trait called LowPriorityImplicits.
 Rather than importing Foo.Implicits you can make your own implicits object that extends this and provides overrides.
 For example:
-```scala
-@fromSchemaResource("/simple.json")
-object Foo
-import Foo._
 
-object BetterImplicits extends Foo.LowPriorityImplicits {
-  implicit val myEncoder: Encoder[Foo.Root] =   ... 
-  implicit val betterDecoder: Decoder[Foo.Root] = ...
-}
-import BetterImplicits._
-```
+    ```scala
+    @fromSchemaResource("/simple.json")
+    object Foo
+    import Foo._
+
+    object BetterImplicits extends Foo.LowPriorityImplicits {
+      implicit val myEncoder: Encoder[Foo.Root] =   ... 
+      implicit val betterDecoder: Decoder[Foo.Root] = ...
+    }
+    import BetterImplicits._
+    ```
+
+7. Free form Json (we call them Any types above) are quite common within Json schemas. These are fields that are left open to take any
+kind of Json chunk (maybe for additional properties, or data, etc). Unfortunately they presents a challenge in a strongly typed 
+language, such as Scala, where we always need some kind of type. 
+ 
+    The approach we've taken is to wrap these chunks in their own case class which has a single field of type ```Any```. 
+    This also allows you to override the encode/decoders for that type (```Root.Data``` in this example) with something more custom
+    if required.
+    
+    ```scala
+    @fromSchemaJson("""
+    {
+      "type": "object",
+      "properties" : { 
+        "data" : { "type": "array", "items": { } }
+      }
+    }
+    """)
+    object Schema
+    import Schema._
+    import Schema.Implicits._
+    
+    val values = List( Root.Data(Map("size" -> 350, "country" -> "US")), Root.Data(Map("size" -> 350, "country" -> "US")) )
+    Root(data=Some(values))
+    ```
+    
+    The default encoder/decoder (as shown in the code example above) works if your types are:
+    
+      * Primitive types: Boolean, Byte, Short, Int, Long, Float, Double
+      * Primate arrays (Array[Byte], Array[Int], etc)
+      * Seq[Any] (and subclasses) where Any needs to be one of the types in this list
+      * Maps[String, Any], where Any needs to be one of the types in this list.
+      
+    Or, in other words, you can't stick arbitrary objects in the Any wrapper and expect their encoders/decoders to get picked up. 
+    If you need that then you'll have to override the default encoder/decoder for this type. 
+

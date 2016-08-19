@@ -13,8 +13,12 @@ class ASTHelpersSpec extends FlatSpec with Matchers with ASTMatchers {
   import runtimeUniverse._
 
   val helpers = new ASTHelpers[runtimeUniverse.type](runtimeUniverse)
-
   import helpers._
+
+  "hasAnnotation" should "return true if the given mods has the given annotation" in {
+    val q"$mods trait $_" = q"@foo trait Test"
+    hasAnnotation(mods, "foo") should be (true)
+  }
 
   "selectPathToList()" should "make a.b.Bob into List[String](a,b,Bob)" in {
     selectPathToList(q"a.b.Bob") should ===(List("a", "b", "Bob"))
@@ -29,16 +33,16 @@ class ASTHelpersSpec extends FlatSpec with Matchers with ASTMatchers {
     typeSelectPathToList(tq"a.b.Bob[A,B[C]]") should ===(List("a", "b", "BobABC"))
   }
 
-  "typeToName()" should "make type into a TermName with initial lower case letter" in {
-    typeToName(TypeName("MyObj")) should === ("myObj")
+  "nameFromType()" should "make type into a string that can be used as a name" in {
+    nameFromType(tq"a.b.c.MyObj") should === ("ABCMyObj")
   }
 
-  it should "work with type select paths" in {
-    typeToName(tq"a.b.MyObj") should === ("myObj")
+  it should "let you specify not to use the path" in {
+    nameFromType(tq"a.b.MyObj", false) should === ("MyObj")
   }
 
   it should "work with type parameters" in {
-    typeToName(tq"a.b.MyObj[A, B[C]]") should === ("myObjABC")
+    nameFromType(tq"a.b.MyObj[A, B[C]]") should === ("ABMyObjABC")
   }
 
   "inOption()" should "wrap a given type in Option[X]" in {
@@ -86,11 +90,11 @@ class ASTHelpersSpec extends FlatSpec with Matchers with ASTMatchers {
   }
 
   "typeNameToTermName()" should "convert a typeName (with path) to a termName" in {
-    typeNameToTermName(tq"a.b.C") should === (q"a.b.C")
+    companionForType(tq"a.b.C") should === (q"a.b.C")
   }
 
   "termNameToTypeName()" should "convert a termName (with path) to a typeName" in {
-    termNameToTypeName(q"a.b.C") should === (tq"a.b.C")
+    typeForCompanion(q"a.b.C") should === (tq"a.b.C")
   }
 
   "extendsType()" should "return only case-case instances that extend the given type" in {
@@ -101,7 +105,7 @@ class ASTHelpersSpec extends FlatSpec with Matchers with ASTMatchers {
       q"case object E extends Bar { val i: Int = 1 }" ::
       Nil
 
-    val res = extendsType(List("Foo"), tq"Bar", defs)
+    val res = collectExtendsType(List("Foo"), tq"Bar", defs)
     res.map(_._2) should === (
       q"case class B(i: Int) extends Bar" ::
       q"case class C(i: Int) extends Bar" ::

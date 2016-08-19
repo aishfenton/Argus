@@ -284,11 +284,11 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
     showCode(defs.head) should include ("case class Foo")
   }
 
-  it should "default to type String?? otherwise" in {
-    val (typ, defs) = mb.mkType(Nil, Root(), "Foo")
+  it should "default to making a wrapper class around an Any field" in {
+    val (typ, defs) = mb.mkType("Foo" :: Nil, Root(), "Bar")
 
-    typ should === (tq"String")
-    defs should be (empty)
+    typ should === (tq"Foo.Bar")
+    defs should === (q"case class Bar(x: Any)" :: Nil)
   }
 
   "mkValDef()" should "make a valDefs from a Field" in {

@@ -1,6 +1,5 @@
 package argus.macros
 import scala.language.experimental.macros
-import argus.schema._
 import scala.reflect.api.Universe
 
 /**
@@ -9,33 +8,51 @@ import scala.reflect.api.Universe
 class ASTHelpers[U <: Universe](val u: U) {
   import u._
 
+  /**
+    * Returns true if the given contains the given annotation
+    */
+  def hasAnnotation(mods: Modifiers, annotation: String) = mods.annotations.exists {
+    _.exists(_.equalsStructure(q"new ${TypeName(annotation)}()"))
+  }
+
+  /**
+    * Returns the intersection set between two lists of trees (based on the tree's being equal in structure)
+    */
   def treesIntersect(l1: List[Tree], l2: List[Tree]) = l1.filter(i1 => l2.exists(i2 => showRaw(i1) == showRaw(i2)))
 
   def uncapitialize(s: String) = s.head.toLower + s.tail
 
-  def typeNameToTermName(typ: Tree) = mkSelectPath(typeSelectPathToList(typ))
-  def termNameToTypeName(typ: Tree) = mkTypeSelectPath(selectPathToList(typ))
+  /**
+    * For a given type (optional including it's path) returns it's companion object
+    */
+  def companionForType(typ: Tree) = mkSelectPath(typeSelectPathToList(typ))
+
+  /**
+    * For a given companion object (optional including it's path) returns it's given type
+    */
+  def typeForCompanion(typ: Tree) = mkTypeSelectPath(selectPathToList(typ))
 
   /**
     * Collects and returns case classes that extend the given type.
     * @return A list of tuples. Each tuple contains the path, and class def
     */
-  def extendsType(path: List[String], typ: Tree, defs: List[Tree]): List[(List[String], Tree)] = defs collect {
+  def collectExtendsType(path: List[String], typ: Tree, defs: List[Tree]): List[(List[String], Tree)] = defs collect {
     case (defDef@q"case object $name extends $sTyp { ..$_ }") if sTyp.equalsStructure(typ) => (path, defDef) :: Nil
     case (defDef@q"case class $name(..$params) extends $sTyp") if sTyp.equalsStructure(typ) => (path, defDef) :: Nil
-    case (q"object $name { ..$innerDefs }") => extendsType(path :+ name.toString, typ, innerDefs)
+    case (q"object $name { ..$innerDefs }") => collectExtendsType(path :+ name.toString, typ, innerDefs)
   } flatten
 
   /**
-    * Makes type into a name, suitable for use as a variable name. Rules:
-    *   - Takes the last item of the select path (i.e. a.b.C -> C)
-    *   - Makes initial letter lower-case
+    * Returns a string from a given type (with path) that somewhat uniquely identifies this type. Can be useful for
+    * producing variable names.
+    * For example: a.b.C => ABC
+    * @param typ The type to produce a term from.
+    * @param usePath Whether to use a type's path or not. If not then only C of a.b.C is used. Defaults to true.
     */
-  def typeToName(typ: Tree) = {
-    val last = typeSelectPathToList(typ).last
-    uncapitialize(last)
+  def nameFromType(typ: Tree, usePath: Boolean = true) = {
+    val full = typeSelectPathToList(typ)
+    if (usePath) full.map(_.capitalize).mkString else full.last.capitalize
   }
-  def typeToName(typ: TypeName) = uncapitialize(typ.toString)
 
   val RefPathExtractor = """([\w#]+)/properties""".r("name")
   val RefNameExtractor = """[^/]+$""".r
