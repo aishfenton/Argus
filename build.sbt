@@ -1,3 +1,4 @@
+import ReleaseTransformations._
 
 lazy val Vers = new {
   val circe = "0.4.1"
@@ -24,6 +25,7 @@ lazy val commonSettings = Seq(
   },
   publishArtifact in Test := false,
   pomIncludeRepository := { _ => false },
+  sonatypeProfileName := "com.github.aishfenton",
   pomExtra := (
     <scm>
       <url>git@github.com:aishfenton/Argus.git</url>
@@ -43,7 +45,21 @@ lazy val commonSettings = Seq(
           <name>DB Tsai</name>
         </developer>
       </developers>
-    )
+  ),
+  releaseProcess := Seq[ReleaseStep](
+    checkSnapshotDependencies,
+    inquireVersions,
+    runClean,
+    runTest,
+    setReleaseVersion,
+    commitReleaseVersion,
+    tagRelease,
+    ReleaseStep(action = Command.process("publishSigned", _)),
+    setNextVersion,
+    commitNextVersion,
+    ReleaseStep(action = Command.process("sonatypeReleaseAll", _)),
+    pushChanges
+  )
 
 )
 
