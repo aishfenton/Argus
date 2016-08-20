@@ -5,9 +5,11 @@
 <img src="https://dl.dropboxusercontent.com/u/8245460/vegas/argus-logo.png" width="170">
 
 Scala macros for generating code from [Json Schemas](http://json-schema.org). Any structures defined within the
-schema (such as properties, enums, etc) are used to generate scala code at compile time.
+schema (such as properties, enums, etc) are used to generate scala code at compile time. Json encoder/decoders are also generated for the [Circe](https://github.com/travisbrown/circe) Json library.
 
-Json encoder/decoders are also generated using the Circe Json library.
+**NB:**
+Why Argus? In keeping with the theme of Argonaut and Circe, Argus (son of Arestor) was the builder of the ship "Argo", 
+on which the Argonauts sailed.
 
 ## Quick Example
 
@@ -78,11 +80,7 @@ val newPerson = person.copy(address=Some(address))
 newPerson.asJson 
 ```
 
-Many more examples [here](argus/src/test/scala/argus/macros/FromSchemaSpec.scala)
-
-**NB:**
-Why Argus? In keeping with the theme of Argonaut and Circe, Argus (son of Arestor) was the builder of the ship "Argo", 
-on which the Argonauts sailed.
+**Many more examples [here](argus/src/test/scala/argus/macros/FromSchemaSpec.scala)**
 
 # Rules
 
