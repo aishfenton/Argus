@@ -315,7 +315,7 @@ language, such as Scala, where we always need some kind of type.
     
       * Primitive types: Boolean, Byte, Short, Int, Long, Float, Double
       * Primate arrays (Array[Byte], Array[Int], etc)
-      * Seq[Any] (and subclasses) where Any needs to be one of the types in this list
+      * Seq\[Any\] (and subclasses) where Any needs to be one of the types in this list
       * Maps[String, Any], where Any needs to be one of the types in this list.
       
     Or, in other words, you can't stick arbitrary objects in the Any wrapper and expect their encoders/decoders to get picked up. 

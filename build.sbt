@@ -8,7 +8,6 @@ lazy val Vers = new {
 lazy val commonSettings = Seq(
   name := "Argus",
   organization := "com.github.aishfenton",
-  version := "0.2.0",
   scalaVersion := "2.11.8",
   scalacOptions += "-target:jvm-1.7",
   homepage := Some(url("https://github.com/aishfenton/Argus")),
