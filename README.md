@@ -2,6 +2,8 @@
 
 [![TravisCI](https://travis-ci.org/aishfenton/Argus.svg?branch=master)](https://travis-ci.org/aishfenton/Argus)
 
+<img src="https://dl.dropboxusercontent.com/u/8245460/vegas/argus-logo.png" width="170">
+
 Scala macros for generating code from [Json Schemas](http://json-schema.org). Any structures defined within the
 schema (such as properties, enums, etc) are used to generate scala code at compile time.
 
