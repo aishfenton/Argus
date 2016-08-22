@@ -1,4 +1,4 @@
-# Argus
+# Argus (船大工)
 
 [![TravisCI](https://travis-ci.org/aishfenton/Argus.svg?branch=master)](https://travis-ci.org/aishfenton/Argus)
 
