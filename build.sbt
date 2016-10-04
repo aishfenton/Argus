@@ -43,6 +43,10 @@ lazy val commonSettings = Seq(
           <id>dbtsai</id>
           <name>DB Tsai</name>
         </developer>
+        <developer>
+          <id>rogermenezes</id>
+          <name>Roger Menezes</name>
+        </developer>
       </developers>
   ),
   releaseProcess := Seq[ReleaseStep](
