@@ -14,6 +14,11 @@ lazy val commonSettings = Seq(
   licenses := Seq("MIT License" -> url("http://www.opensource.org/licenses/MIT")),
 
   addCompilerPlugin("org.scalamacros" %% "paradise" % "2.1.0" cross CrossVersion.full),
+
+  // NB: We put example schemas in main package since otherwise the macros can't run for test (since they
+  // excute before test-classes is populated). But then we need to exclude them from packing.
+  mappings in (Compile, packageBin) ~= { _.filter(!_._1.getName.endsWith(".json")) },
+
   publishMavenStyle := true,
   publishTo := {
     val nexus = "https://oss.sonatype.org/"
