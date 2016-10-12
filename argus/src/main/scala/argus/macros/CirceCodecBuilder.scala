@@ -103,7 +103,7 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
     val decDef = q"""
     Decoder.instance((c: HCursor) => for {
       json <- c.as[Json]
-      singleton <- json match { case ..$caseDefs; case _ => throw new Exception("Couldn't find enum:" + json.toString) }
+      singleton <- json match { case ..$caseDefs; case _ => cats.data.Xor.left(DecodingFailure("Couldn't find enum:" + json.toString, c.history)) }
     } yield singleton)
     """
 

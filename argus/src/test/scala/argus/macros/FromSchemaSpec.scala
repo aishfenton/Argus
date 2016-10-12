@@ -254,6 +254,28 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     root.country should === (Some(Root.CountryEnums.NZ))
   }
 
+  it should "return a DecodeFailure if it can't decode an enum type" in {
+    @fromSchemaJson("""
+    {
+      "type": "object",
+      "properties": {
+        "country": { "enum": ["UK", "USA", "NZ"] }
+      }
+    }
+    """)
+    object Foo
+    import Foo._
+    import Foo.Implicits._
+
+    val json =
+      """
+        |{
+        |  "country": "oops"
+        |}
+      """.stripMargin
+    parser.decode[Root](json).isLeft shouldBe (true)
+  }
+
   it should "encode any wrappers" in {
     @fromSchemaJson("""
     {
