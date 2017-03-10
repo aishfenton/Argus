@@ -32,7 +32,7 @@ object JsonDiff {
         case _ => {
           (j1.asArray, j2.asArray) match {
             case (Some(a1), Some(a2)) => {
-              a1.zip(a2).flatMap { case(jj1, jj2) => diffR(jj1,jj2) }
+              a1.zip(a2).flatMap { case(jj1, jj2) => diffR(jj1,jj2) } toList
             }
 
             // Everything else

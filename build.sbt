@@ -1,7 +1,7 @@
 import ReleaseTransformations._
 
 lazy val Vers = new {
-  val circe = "0.4.1"
+  val circe = "0.7.0"
   val scalatest = "2.2.6"
 }
 

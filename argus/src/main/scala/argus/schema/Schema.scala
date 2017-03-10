@@ -2,8 +2,9 @@ package argus.schema
 
 import java.io.InputStream
 
-import cats.data.Xor
-import cats.implicits._
+import cats.instances.all._
+import cats.syntax.traverse._
+import cats.syntax.either._
 import io.circe._
 import io.circe.syntax._
 
@@ -31,8 +32,8 @@ object Schema {
     } yield root
 
     result match {
-      case Xor.Right(root) => root
-      case Xor.Left(failure) => throw new Exception("Error parsing schema: " + failure.toString)
+      case Right(root) => root
+      case Left(failure) => throw new Exception("Error parsing schema: " + failure.toString)
     }
   }
 
@@ -181,14 +182,14 @@ object Schema {
     Decoder.instance((c) => for {
       str <- c.as[String]
       typ <- str match {
-        case "array" => Xor.right(SimpleTypes.Array)
-        case "boolean" => Xor.right(SimpleTypes.Boolean)
-        case "integer" => Xor.right(SimpleTypes.Integer)
-        case "null" => Xor.right(SimpleTypes.Null)
-        case "number" => Xor.right(SimpleTypes.Number)
-        case "object" => Xor.right(SimpleTypes.Object)
-        case "string" => Xor.right(SimpleTypes.String)
-        case t@_ => Xor.left(DecodingFailure("Don't know simple type " + t, c.history))
+        case "array" => Either.right(SimpleTypes.Array)
+        case "boolean" => Either.right(SimpleTypes.Boolean)
+        case "integer" => Either.right(SimpleTypes.Integer)
+        case "null" => Either.right(SimpleTypes.Null)
+        case "number" => Either.right(SimpleTypes.Number)
+        case "object" => Either.right(SimpleTypes.Object)
+        case "string" => Either.right(SimpleTypes.String)
+        case t@_ => Either.left(DecodingFailure("Don't know simple type " + t, c.history))
       }
     } yield typ)
 
@@ -198,7 +199,7 @@ object Schema {
 
   implicit val FieldDecoder: Decoder[List[Field]] =
     Decoder.instance((c) => {
-      c.focus.asObject match {
+      c.focus.flatMap(_.asObject) match {
 
         // Extract each field and parse it's sub-schema as a an Root schema
         case Some(obj) => {
@@ -208,14 +209,14 @@ object Schema {
             result = json.as[Root].map(Field(name, _))
           } yield result
 
-          // sequence() is cats magic to make List(Xor.Right(1), Xor.Right(2)) into Xor(List(1,2)), used here ensure
+          // sequence() is cats magic to make List(Right(1), Right(2)) into Either(List(1,2)), used here ensure
           // that if parse errors occured within fields, those errors as propogated up
           // NB: explicit type is just to help IntelliJ realize this is valid. Not really required.
-          results.sequenceU: Xor[DecodingFailure, List[Field]]
+          results.sequenceU: Either[DecodingFailure, List[Field]]
         }
 
         // Properties isn't an object?!?
-        case _ => Xor.left(DecodingFailure("Properties isn't an object?", c.history))
+        case _ => Either.left(DecodingFailure("Properties isn't an object?", c.history))
       }
 
     })

@@ -1,6 +1,7 @@
 package argus.schema
 
 import argus.json.JsonDiff
+import cats.syntax.either._
 import io.circe._
 import org.scalatest._
 
