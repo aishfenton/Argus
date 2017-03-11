@@ -2,13 +2,14 @@ import ReleaseTransformations._
 
 lazy val Vers = new {
   val circe = "0.7.0"
-  val scalatest = "2.2.6"
+  val scalatest = "3.0.1"
 }
 
 lazy val commonSettings = Seq(
   name := "Argus",
   organization := "com.github.aishfenton",
-  scalaVersion := "2.11.8",
+  scalaVersion := "2.12.1",
+  crossScalaVersions := Seq("2.11.8", "2.12.1"),
   scalacOptions += "-target:jvm-1.7",
   homepage := Some(url("https://github.com/aishfenton/Argus")),
   licenses := Seq("MIT License" -> url("http://www.opensource.org/licenses/MIT")),
@@ -83,14 +84,14 @@ lazy val argus = project.
   settings(
     libraryDependencies ++= Seq(
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-      "org.scala-lang" % "scala-compiler" % scalaVersion.value % "provided",
+      "org.scala-lang" % "scala-compiler" % scalaVersion.value % Provided,
 
       "io.circe" %% "circe-core" % Vers.circe,
       "io.circe" %% "circe-generic" % Vers.circe,
       "io.circe" %% "circe-parser" % Vers.circe,
 
-      "org.scalactic" %% "scalactic" % Vers.scalatest % "test",
-      "org.scalatest" %% "scalatest" % Vers.scalatest % "test"
+      "org.scalactic" %% "scalactic" % Vers.scalatest % Test,
+      "org.scalatest" %% "scalatest" % Vers.scalatest % Test
     )
   )
 
