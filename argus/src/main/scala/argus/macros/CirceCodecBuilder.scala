@@ -11,6 +11,7 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
   import helpers._
 
   val imports =
+    q"import cats.syntax.either._" ::
     q"import io.circe._" ::
     q"import io.circe.syntax._" ::
     Nil
@@ -46,7 +47,7 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
   """
 
   val anyDecoder = q"""
-    def anyDecoder: Decoder[Any] = Decoder.instance((h: HCursor) => h.focus match {
+    def anyDecoder: Decoder[Any] = Decoder.instance((h: HCursor) => h.focus.get match {
       case n if n.isNull =>    null
       case n if n.isNumber =>  n.as[Double]
       case b if b.isBoolean => b.as[Boolean]
@@ -97,13 +98,13 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
 
   def mkEnumDecoder(typ: Tree, subTermPairs: List[(String, Tree)]): Tree = {
     val caseDefs = subTermPairs.map { case(jsonStr, subTerm) =>
-      cq"j if j == parser.parse($jsonStr).toOption.get => cats.data.Xor.right($subTerm)"
+      cq"j if j == parser.parse($jsonStr).toOption.get => Either.right($subTerm)"
     }
 
     val decDef = q"""
     Decoder.instance((c: HCursor) => for {
       json <- c.as[Json]
-      singleton <- json match { case ..$caseDefs; case _ => cats.data.Xor.left(DecodingFailure("Couldn't find enum:" + json.toString, c.history)) }
+      singleton <- json match { case ..$caseDefs; case _ => Either.left(DecodingFailure("Couldn't find enum:" + json.toString, c.history)) }
     } yield singleton)
     """
 

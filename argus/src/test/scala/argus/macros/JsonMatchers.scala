@@ -2,6 +2,7 @@ package argus.macros
 
 import argus.json.JsonDiff
 import org.scalactic.Equality
+import cats.syntax.either._
 import io.circe._
 import org.scalatest.matchers.{ MatchResult, Matcher }
 

@@ -5,6 +5,7 @@ import java.io.File
 import argus.json.JsonDiff
 import argus.schema.Schema
 import org.scalatest.{FlatSpec, Matchers}
+import cats.syntax.either._
 import io.circe._
 import io.circe.syntax._
 
@@ -363,7 +364,7 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     object Implicits extends Foo.LowPriorityImplicits {
       implicit val betterEncoder: Encoder[Foo.Root] = Encoder.instance { r => "override".asJson }
       implicit val betterDecoder: Decoder[Foo.Root] = Decoder.instance((h: HCursor) =>
-        cats.data.Xor.right(Root(name=Some("override")))
+        Either.right(Root(name=Some("override")))
       )
     }
     import Implicits._

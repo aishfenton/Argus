@@ -120,9 +120,9 @@ class CirceCodecBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
       Decoder.instance((c: HCursor) => for {
         json <- c.as[Json]
         singleton <- json match {
-          case j if j == parser.parse("1").toOption.get => cats.data.Xor.right(FooEnum.Foo1)
-          case j if j == parser.parse("\"NZ\"").toOption.get => cats.data.Xor.right(FooEnum.FooNZ)
-          case _ => cats.data.Xor.left(DecodingFailure("Couldn't find enum:" + json.toString, c.history))
+          case j if j == parser.parse("1").toOption.get => Either.right(FooEnum.Foo1)
+          case j if j == parser.parse("\"NZ\"").toOption.get => Either.right(FooEnum.FooNZ)
+          case _ => Either.left(DecodingFailure("Couldn't find enum:" + json.toString, c.history))
         }
       } yield singleton)
     """)
