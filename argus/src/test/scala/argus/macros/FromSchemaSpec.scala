@@ -393,6 +393,14 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     Schema.Person(age=Some(42)).age should === (Some(42))
   }
 
+  it should "support parent, and make the root element extend it" in {
+    trait Person
+    @fromSchemaResource("/simple.json", parent=Some("Person"))
+    object Schema
+
+    implicitly[Schema.Root <:< Person]
+  }
+
   "Complex example" should "work end to end" in {
     @fromSchemaResource("/vega-lite-schema.json")
     object Vega
