@@ -22,7 +22,7 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
     val fields = Field("a", schemaFromSimpleType(SimpleTypes.Integer)) ::
       Field("b", schemaFromSimpleType(SimpleTypes.String)) :: Nil
 
-    val (typ, res) = mb.mkCaseClassDef(List("Foo"), "Bar", fields, None)
+    val (typ, res) = mb.mkCaseClassDef(List("Foo"), "Bar", None, fields, None)
 
     typ should === (tq"Foo.Bar")
     res should === (q"case class Bar(a: Option[Int] = None, b: Option[String] = None)" :: Nil)
@@ -33,14 +33,14 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
       Field("a", schemaFromSimpleType(SimpleTypes.Integer)) ::
       Field("b", schemaFromSimpleType(SimpleTypes.String)) :: Nil
 
-    val (_, res) = mb.mkCaseClassDef(List("Foo"), "Bar", fields, Some("b" :: Nil))
+    val (_, res) = mb.mkCaseClassDef(List("Foo"), "Bar", None, fields, Some("b" :: Nil))
 
     res should === (q"case class Bar(a: Option[Int] = None, b: String)" :: Nil)
   }
 
   it should "reference other classes when type is $ref" in {
     val fields = Field("a", schemaFromRef("#/definitions/Address")) :: Nil
-    val (_, res) = mb.mkCaseClassDef(List("Foo"), "Bar", fields, None)
+    val (_, res) = mb.mkCaseClassDef(List("Foo"), "Bar", None, fields, None)
 
     res should === (q"case class Bar(a: Option[Address] = None)" :: Nil)
   }
@@ -54,7 +54,7 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
       Field("name", schemaFromSimpleType(SimpleTypes.String)) ::
       Field("address", innerSchema) :: Nil
 
-    val (_, res) = mb.mkCaseClassDef(List("Foo"), "Person", fields, None)
+    val (_, res) = mb.mkCaseClassDef(List("Foo"), "Person", None, fields, None)
     res should === (
       q"case class Person(name: Option[String] = None, address: Option[Foo.Person.Address] = None)" ::
       q"""
@@ -178,7 +178,7 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
 
   "mkDef()" should "create a type alias for a $ref schema" in {
     val schema = schemaFromRef("#/definitions/ABC")
-    val (typ, res) = mb.mkDef("Foo" :: Nil, "Bar", schema)
+    val (typ, res) = mb.mkDef("Foo" :: Nil, "Bar", None, schema)
 
     typ should === (tq"Foo.Bar")
     res should === (
@@ -189,7 +189,7 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
 
   it should "create an enum for a enum schema" in {
     val schema = schemaFromEnum("\"A\"" :: "\"B\"" :: Nil)
-    val (typ, res) = mb.mkDef("Foo" :: Nil, "Bar", schema)
+    val (typ, res) = mb.mkDef("Foo" :: Nil, "Bar", None, schema)
 
     typ should === (tq"Foo.Bar")
     showCode(res.head) should include ("@enum")
@@ -200,7 +200,7 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
       Field("a", schemaFromSimpleType(SimpleTypes.Integer)) ::
       Nil
     )
-    val (typ, res) = mb.mkDef("Foo" :: Nil, "Bar", schema)
+    val (typ, res) = mb.mkDef("Foo" :: Nil, "Bar", None, schema)
 
     typ should === (tq"Foo.Bar")
     showCode(res.head) should include ("case class Bar")
@@ -208,7 +208,7 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
 
   it should "create an type alias for an array schema named using name" in {
     val schema = schemaFromArray(schemaFromSimpleType(SimpleTypes.String))
-    val (typ, res) = mb.mkDef("Foo" :: Nil, "Bar", schema)
+    val (typ, res) = mb.mkDef("Foo" :: Nil, "Bar", None, schema)
 
     typ should === (tq"Foo.Bar")
     showCode(res.head) should include ("type Bar = List[String]")
@@ -216,7 +216,7 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
 
   it should "create an type alias for intrinsic types" in {
     val schema = schemaFromSimpleType(SimpleTypes.String)
-    val (typ, res) = mb.mkDef("Foo" :: Nil, "Bar", schema)
+    val (typ, res) = mb.mkDef("Foo" :: Nil, "Bar", None, schema)
 
     typ should === (tq"Foo.Bar")
     showCode(res.head) should include ("type Bar = String")
@@ -228,7 +228,7 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
       schemaFromArray(schemaFromSimpleType(SimpleTypes.String)) ::
       Nil
     )
-    val (typ, res) = mb.mkDef("Foo" :: Nil, "Bar", schema)
+    val (typ, res) = mb.mkDef("Foo" :: Nil, "Bar", None, schema)
     val code = res.map(showCode(_)).mkString("\n")
 
     typ should === (tq"Foo.BarUnion")
@@ -341,7 +341,7 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
       )) ::
       Nil
 
-    val (typ: Tree, res) = mb.mkSchemaDef("Root", schema=base.copy(definitions=Some(defs)), "Foo" :: Nil)
+    val (typ: Tree, res) = mb.mkSchemaDef("Root", None, schema=base.copy(definitions=Some(defs)), "Foo" :: Nil)
     val code = res.map(showCode(_)).mkString("\n")
 
     typ should === (tq"Foo.Root")
@@ -361,10 +361,21 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
       Nil
     )
 
-    val (typ: Tree, res) = mb.mkSchemaDef("Root", schema)
+    val (typ: Tree, res) = mb.mkSchemaDef("Root", None, schema)
     val code = res.map(showCode(_)).mkString("\n")
     code should include ("case class Root(a: Option[Int] = None, b: Option[Root.C] = None)")
     code should include ("type C = String")
+  }
+
+  it should "support extending a provided parent" in {
+    val schema = schemaFromFields(
+      Field("a", schemaFromSimpleType(SimpleTypes.Integer)) ::
+        Nil
+    )
+
+    val (typ: Tree, res) = mb.mkSchemaDef("Root", Some("ParentTrait"), schema)
+    val code = res.map(showCode(_)).mkString("\n")
+    code should include ("case class Root(a: Option[Int] = None) extends ParentTrait")
   }
 
 }

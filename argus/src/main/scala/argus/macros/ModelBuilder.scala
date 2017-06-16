@@ -36,7 +36,7 @@ class ModelBuilder[U <: Universe](val u: U) {
   /**
     * Main workhorse. Creates case-classes from given fields.
     */
-  def mkCaseClassDef(path: List[String], name: String, fields: List[Field],
+  def mkCaseClassDef(path: List[String], name: String, parent: Option[String], fields: List[Field],
                      requiredFields: Option[List[String]]): (Tree, List[Tree]) = {
 
     // Build val defs for each field in case class, keeping track of new class defs created along the way (for nested
@@ -50,7 +50,10 @@ class ModelBuilder[U <: Universe](val u: U) {
     }
 
     val typ = mkTypeSelectPath(path :+ name)
-    val ccDef = q"""case class ${ TypeName(name) } (..$params)"""
+    val ccDef = parent match {
+      case Some(p) => q"""case class ${TypeName(name)}(..$params) extends ${TypeName(p)}"""
+      case None => q"""case class ${TypeName(name)} (..$params)"""
+    }
 
     val defs = if (fieldDefs.isEmpty)
       ccDef :: Nil
@@ -121,16 +124,17 @@ class ModelBuilder[U <: Universe](val u: U) {
     * Creates a Class/Type definition (i.e. creates a case class or type alias).
     *
     * @param name The name of the class/type to that is created
-    * @param schema. The schema that defines the type. Rough set of rules are:
+    * @param parent The name of a trait that the created class extends
+    * @param schema The schema that defines the type. Rough set of rules are:
     *   - schema.typ.$ref, creates a type alias
     *   - schema.typ.object, creates a new Case Class
     *   - schema.typ.intrinicType, creates a type alias to the intrinic type
     *   - schmea.typ.array, creates an array based on the type defined within schema.items
     *   - schema.typ.List[st], ???
     */
-  def mkDef(path: List[String], name: String, schema: Root): (Tree, List[Tree]) = {
+  def mkDef(path: List[String], name: String, parent: Option[String], schema: Root): (Tree, List[Tree]) = {
 
-    (schema.$ref, schema.enum, schema.typ,  schema.oneOf, schema.multiOf) match {
+    (schema.$ref, schema.enum, schema.typ, schema.oneOf, schema.multiOf) match {
 
       // Refs
       case (Some(ref),_,_,_,_) => {
@@ -145,7 +149,7 @@ class ModelBuilder[U <: Universe](val u: U) {
 
       // Object (which defines a case-class)
       case (_,_,Some(SimpleTypeTyp(SimpleTypes.Object)),_,_) => {
-        mkCaseClassDef(path, name, schema.properties.get, schema.required)
+        mkCaseClassDef(path, name, parent, schema.properties.get, schema.required)
       }
 
       // Array, create type alias to List of type defined by schema.items (which itself is a schema)
@@ -197,7 +201,7 @@ class ModelBuilder[U <: Universe](val u: U) {
 
     // Types are a bit strange. They are type definitions and schemas. We extract any inner /definitions
     // and embed those
-    val (_, defDefs) = mkSchemaDef(defaultName, schema.justDefinitions, path)
+    val (_, defDefs) = mkSchemaDef(defaultName, None, schema.justDefinitions, path)
 
     // If references existing schema, use that instead
     (schema.typ, schema.$ref, schema.enum, schema.oneOf, schema.multiOf) match {
@@ -239,7 +243,7 @@ class ModelBuilder[U <: Universe](val u: U) {
            | (_,_,_,_,Some(_)) => {
 
         // NB: We ignore defDefs here since we're re-calling mkSchema
-        mkSchemaDef(defaultName, schema, path)
+        mkSchemaDef(defaultName, None, schema, path)
       }
 
       // If not type info specified then we have no option but to make it a map of strings (field names) to anys (values)
@@ -299,18 +303,18 @@ class ModelBuilder[U <: Universe](val u: U) {
     * @param path A package path for where this is defined. Defaults to Nil.
     * @return A tuple containing the type of the root element that is generated, and all definitions required to support it
     */
-  def mkSchemaDef(name: String, schema: Root, path: List[String] = Nil): (Tree, List[Tree]) = {
+  def mkSchemaDef(name: String, parent: Option[String], schema: Root, path: List[String] = Nil): (Tree, List[Tree]) = {
 
     // Make definitions
     val fieldDefs = for {
       fields <- schema.definitions.toList
       field <- fields
-      (_, defDefs) = mkSchemaDef(field.name.capitalize, field.schema, path)
+      (_, defDefs) = mkSchemaDef(field.name.capitalize, None, field.schema, path)
       defDef <- defDefs
     } yield defDef
 
     // Make root
-    val (typ, rootDefs) = mkDef(path, name, schema)
+    val (typ, rootDefs) = mkDef(path, name, parent, schema)
 
     (typ, fieldDefs ++ rootDefs)
   }
