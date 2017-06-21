@@ -1,6 +1,7 @@
 package argus.macros
 
 import java.io.File
+import java.util.UUID
 
 import argus.json.JsonDiff
 import argus.schema.Schema
@@ -209,7 +210,7 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     root.erdosNumber === (Some(123))
   }
 
-  it should "encode enum types" in {
+  it should "encode enum type" in {
     @fromSchemaJson("""
     {
       "type": "object",
@@ -253,6 +254,60 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     val root = parser.decode[Root](json).toOption.get
 
     root.country should === (Some(Root.CountryEnums.NZ))
+  }
+
+  it should "encode UUID type" in {
+    @fromSchemaJson("""
+    {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    }
+    """)
+    object Foo
+    import Foo._
+    import Foo.Implicits._
+    import io.circe.syntax._
+
+    val uuid = "38400000-8cf0-11bd-b23e-10b96e4ef00d"
+    val root = Root(Some(UUID.fromString(uuid)))
+    root.asJson should beSameJsonAs (s"""
+                                       |{
+                                       |  "id": "$uuid"
+                                       |}
+                                     """.stripMargin)
+  }
+
+  it should "decode UUID type" in {
+    @fromSchemaJson("""
+    {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    }
+    """)
+    object Foo
+    import Foo._
+    import Foo.Implicits._
+
+    val uuid = "38400000-8cf0-11bd-b23e-10b96e4ef00d"
+    val json =
+      s"""
+        |{
+        |  "id": "$uuid"
+        |}
+      """.stripMargin
+    val root = parser.decode[Root](json).toOption.get
+
+    root.id should === (Some(UUID.fromString(uuid)))
   }
 
   it should "return a DecodeFailure if it can't decode an enum type" in {

@@ -254,6 +254,7 @@ object Schema {
     case object Int8 extends Format { val name = "int8" }
     case object Double extends Format { val name = "double" }
     case object Single extends Format { val name = "single" }
+    case object Uuid extends Format { val name = "uuid" }
   }
 
   implicit def FormatDecoder: Decoder[Format] =
@@ -266,6 +267,7 @@ object Schema {
         case "int8" => Either.right(Formats.Int8)
         case "double" => Either.right(Formats.Double)
         case "single" => Either.right(Formats.Single)
+        case "uuid" => Either.right(Formats.Uuid)
         case t@_ => Either.right(Formats.Unknown)
       }
     } yield format)

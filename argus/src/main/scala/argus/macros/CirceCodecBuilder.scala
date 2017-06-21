@@ -33,6 +33,7 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
       case f: Float =>    f.asJson
       case d: Double =>   d.asJson
       case s: String =>   s.asJson
+      case u: java.util.UUID => u.asJson
       case a: Array[Boolean] @unchecked => a.asJson
       case a: Array[Byte]    @unchecked => a.asJson
       case a: Array[Short]   @unchecked => a.asJson

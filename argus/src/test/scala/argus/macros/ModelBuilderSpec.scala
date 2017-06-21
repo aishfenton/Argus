@@ -31,6 +31,10 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
     mb.mkIntrinsicType(SimpleTypes.Number, Some(Formats.Single)) should === (tq"Float")
   }
 
+  it should "create types with format for string type" in {
+    mb.mkIntrinsicType(SimpleTypes.String, Some(Formats.Uuid)) should === (tq"java.util.UUID")
+  }
+
   it should "create types with unknown or incompatible formats" in {
     mb.mkIntrinsicType(SimpleTypes.String, Some(Formats.Int64)) should === (tq"String")
     mb.mkIntrinsicType(SimpleTypes.String, Some(Formats.Unknown)) should === (tq"String")
