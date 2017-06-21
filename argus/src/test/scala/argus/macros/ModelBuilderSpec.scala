@@ -12,10 +12,34 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
   import argus.schema.Schema._
 
   "mkIntriniscType()" should "create types for basic types" in {
-    mb.mkIntrinsicType(SimpleTypes.String) should === (tq"String")
-    mb.mkIntrinsicType(SimpleTypes.Boolean) should === (tq"Boolean")
-    mb.mkIntrinsicType(SimpleTypes.Integer) should === (tq"Int")
-    mb.mkIntrinsicType(SimpleTypes.Number) should === (tq"Double")
+    mb.mkIntrinsicType(SimpleTypes.String, None) should === (tq"String")
+    mb.mkIntrinsicType(SimpleTypes.Boolean, None) should === (tq"Boolean")
+    mb.mkIntrinsicType(SimpleTypes.Integer, None) should === (tq"Int")
+    mb.mkIntrinsicType(SimpleTypes.Number, None) should === (tq"Double")
+    mb.mkIntrinsicType(SimpleTypes.Null, None) should === (tq"Null")
+  }
+
+  it should "create types with format for integer type" in {
+    mb.mkIntrinsicType(SimpleTypes.Integer, Some(Formats.Int64)) should === (tq"Long")
+    mb.mkIntrinsicType(SimpleTypes.Integer, Some(Formats.Int32)) should === (tq"Int")
+    mb.mkIntrinsicType(SimpleTypes.Integer, Some(Formats.Int16)) should === (tq"Short")
+    mb.mkIntrinsicType(SimpleTypes.Integer, Some(Formats.Int8)) should === (tq"Byte")
+  }
+
+  it should "create types with format for number type" in {
+    mb.mkIntrinsicType(SimpleTypes.Number, Some(Formats.Double)) should === (tq"Double")
+    mb.mkIntrinsicType(SimpleTypes.Number, Some(Formats.Single)) should === (tq"Float")
+  }
+
+  it should "create types with unknown or incompatible formats" in {
+    mb.mkIntrinsicType(SimpleTypes.String, Some(Formats.Int64)) should === (tq"String")
+    mb.mkIntrinsicType(SimpleTypes.String, Some(Formats.Unknown)) should === (tq"String")
+    mb.mkIntrinsicType(SimpleTypes.Boolean, Some(Formats.Int64)) should === (tq"Boolean")
+    mb.mkIntrinsicType(SimpleTypes.Boolean, Some(Formats.Unknown)) should === (tq"Boolean")
+    mb.mkIntrinsicType(SimpleTypes.Integer, Some(Formats.Double)) should === (tq"Int")
+    mb.mkIntrinsicType(SimpleTypes.Integer, Some(Formats.Unknown)) should === (tq"Int")
+    mb.mkIntrinsicType(SimpleTypes.Number, Some(Formats.Int64)) should === (tq"Double")
+    mb.mkIntrinsicType(SimpleTypes.Number, Some(Formats.Unknown)) should === (tq"Double")
   }
 
   "mkCaseClassDef()" should "create a case class with an optional field for each simple type" in {
@@ -366,5 +390,4 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
     code should include ("case class Root(a: Option[Int] = None, b: Option[Root.C] = None)")
     code should include ("type C = String")
   }
-
 }

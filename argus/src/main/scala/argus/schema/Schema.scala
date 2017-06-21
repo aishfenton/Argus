@@ -82,7 +82,7 @@ object Schema {
     definitions: Option[List[Field]] = None, properties: Option[List[Field]] = None,
     typ: Option[Typ] = None, enum: Option[List[String]] = None,
     oneOf: Option[SchemaArray] = None, anyOf: Option[SchemaArray] = None, allOf: Option[SchemaArray] = None,
-    not: Option[Root] = None, required: Option[StringArray] = None, items: Option[Items] = None, format: Option[String] = None,
+    not: Option[Root] = None, required: Option[StringArray] = None, items: Option[Items] = None, format: Option[Format] = None,
     minimum: Option[Double] = None, maximum: Option[Double] = None, exclusiveMinimum: Option[Boolean] = None, exclusiveMaximum: Option[Boolean] = None,
     $ref: Option[String] = None) {
 
@@ -117,7 +117,7 @@ object Schema {
       not <- c.downField("not").as[Option[Root]]
       required <- c.downField("required").as[Option[StringArray]]
       items <- c.downField("items").as[Option[Items]]
-      format <- c.downField("format").as[Option[String]]
+      format <- c.downField("format").as[Option[Format]]
       minimum <- c.downField("minimum").as[Option[Double]]
       maximum <- c.downField("maximum").as[Option[Double]]
       exclusiveMinimum <- c.downField("exclusiveMinimum").as[Option[Boolean]]
@@ -149,6 +149,7 @@ object Schema {
       "exclusiveMaximum" -> r.exclusiveMaximum.asJson,
       "$ref" -> r.$ref.asJson
     ))
+
 
   sealed trait Typ
   case class SimpleTypeTyp(x: SimpleType) extends Typ
@@ -243,6 +244,33 @@ object Schema {
       case sa: ItemsSchemaArray => sa.x.asJson
       case t@_ => throw new Exception("Don't know typ" + t)
     }
+
+  sealed trait Format { def name: String }
+  object Formats {
+    case object Unknown extends Format { val name = "unknown" }
+    case object Int64 extends Format { val name = "int64" }
+    case object Int32 extends Format { val name = "int32" }
+    case object Int16 extends Format { val name = "int16" }
+    case object Int8 extends Format { val name = "int8" }
+    case object Double extends Format { val name = "double" }
+    case object Single extends Format { val name = "single" }
+  }
+
+  implicit def FormatDecoder: Decoder[Format] =
+    Decoder.instance((c) => for {
+      str <- c.as[String]
+      format <- str match {
+        case "int64" => Either.right(Formats.Int64)
+        case "int32" => Either.right(Formats.Int32)
+        case "int16" => Either.right(Formats.Int16)
+        case "int8" => Either.right(Formats.Int8)
+        case "double" => Either.right(Formats.Double)
+        case "single" => Either.right(Formats.Single)
+        case t@_ => Either.right(Formats.Unknown)
+      }
+    } yield format)
+
+  implicit def FormatEncoder: Encoder[Format] = Encoder.instance(_.name.asJson)
 
 }
 
