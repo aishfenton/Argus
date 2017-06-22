@@ -3,6 +3,7 @@ import ReleaseTransformations._
 lazy val Vers = new {
   val circe = "0.7.0"
   val scalatest = "3.0.1"
+  val jodaTime = "2.9.9"
 }
 
 lazy val commonSettings = Seq(
@@ -89,6 +90,8 @@ lazy val argus = project.
       "io.circe" %% "circe-core" % Vers.circe,
       "io.circe" %% "circe-generic" % Vers.circe,
       "io.circe" %% "circe-parser" % Vers.circe,
+
+      "joda-time" % "joda-time" % Vers.jodaTime,
 
       "org.scalactic" %% "scalactic" % Vers.scalatest % Test,
       "org.scalatest" %% "scalatest" % Vers.scalatest % Test

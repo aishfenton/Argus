@@ -9,6 +9,8 @@ import org.scalatest.{FlatSpec, Matchers}
 import cats.syntax.either._
 import io.circe._
 import io.circe.syntax._
+import org.joda.time.DateTime
+import org.joda.time.format.DateTimeFormat
 
 import scala.io.Source
 
@@ -308,6 +310,94 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     val root = parser.decode[Root](json).toOption.get
 
     root.id should === (Some(UUID.fromString(uuid)))
+  }
+
+  it should "encode DateTime type" in {
+    @fromSchemaJson("""
+    {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+    """)
+    object Foo
+    import Foo._
+    import Foo.Implicits._
+    import io.circe.syntax._
+
+
+    val dateTime = "2017-01-01T10:00:00.000Z"
+    val uuid = "38400000-8cf0-11bd-b23e-10b96e4ef00d"
+    val root = Root(Some(DateTime.parse(dateTime)))
+    root.asJson should beSameJsonAs (s"""
+                                        |{
+                                        |  "createdAt": "$dateTime"
+                                        |}
+                                     """.stripMargin)
+  }
+
+  it should "decode DateTime type" in {
+    @fromSchemaJson("""
+    {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+    """)
+    object Foo
+    import Foo._
+    import Foo.Implicits._
+
+    val dateTime = "2017-01-01T10:00:00.000Z"
+    val json =
+      s"""
+         |{
+         |  "createdAt": "$dateTime"
+         |}
+      """.stripMargin
+    val root = parser.decode[Root](json).toOption.get
+
+    root.createdAt should === (Some(DateTime.parse(dateTime)))
+  }
+
+  it should "return an error on decoding for datetime with wrong format" in {
+    @fromSchemaJson("""
+    {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+    """)
+    object Foo
+    import Foo._
+    import Foo.Implicits._
+
+    val dateTime = "wrongDateTime"
+    val json =
+      s"""
+         |{
+         |  "createdAt": "$dateTime"
+         |}
+      """.stripMargin
+    val root = parser.decode[Root](json)
+
+    root should be ('left)
+    root.left.get match {
+      case d: DecodingFailure => d.message should === ("Invalid format: \"wrongDateTime\"")
+      case e@_ => fail(s"Wrong error type: ${e.getClass.getName}")
+    }
   }
 
   it should "return a DecodeFailure if it can't decode an enum type" in {

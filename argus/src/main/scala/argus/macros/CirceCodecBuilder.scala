@@ -20,7 +20,7 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
 
   def inDecoder(typ: Tree) = tq"Decoder[$typ]"
 
-  def constants = anyEncoder :: anyDecoder :: Nil
+  def constants = anyEncoder :: anyDecoder :: dateTimeEncoder :: dateTimeDecoder :: Nil
 
   val anyEncoder = q"""
     def anyEncoder: Encoder[Any] = Encoder.instance((a: Any) => a match {
@@ -56,6 +56,24 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
       case o if o.isObject =>  o.as[Map[String, Any]](Decoder.decodeMapLike(KeyDecoder.decodeKeyString, anyDecoder, Map.canBuildFrom))
       case a if a.isArray =>   a.as[List[Any]](Decoder.decodeCanBuildFrom(anyDecoder, List.canBuildFrom[Any]))
     })
+  """
+
+  val dateTimeEncoder = q"""
+    implicit val dateTimeEncoder: Encoder[org.joda.time.DateTime] = Encoder.instance(dt => dt.toString(org.joda.time.format.ISODateTimeFormat.dateTime().withOffsetParsed).asJson);
+  """
+
+  val dateTimeDecoder = q"""
+    implicit val dateTimeDecoder: Decoder[org.joda.time.DateTime] = Decoder.instance((c: HCursor) =>
+      for {
+        json <- c.as[Json]
+        strJson <- json.asString.map(Either.right).getOrElse(Either.left(DecodingFailure("DateTime", c.history)))
+        dt <- try {
+          Either.right(org.joda.time.DateTime.parse(json.asString.get, org.joda.time.format.ISODateTimeFormat.dateTime().withOffsetParsed))
+        } catch {
+          case error: Exception => Either.left(DecodingFailure(error.getMessage, c.history))
+        }
+      } yield dt
+    )
   """
 
   def mkAnyWrapperEncoder(typ: Tree) = q"""

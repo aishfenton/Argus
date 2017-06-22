@@ -110,6 +110,7 @@ case class Root(name: String, age: Option[Int] = None)
 <tr><td>json type</td><td>json format</td><td>Generated Scala type</td>
 <tr><td><pre>string</pre></td><td><pre>*</pre></td><td><pre>String</pre></td></tr>
 <tr><td><pre>string</pre></td><td><pre>uuid</pre></td><td><pre>java.util.UUID</pre></td></tr>
+<tr><td><pre>string</pre></td><td><pre>date-time</pre></td><td><pre>org.joda.time.DateTime</pre></td></tr>
 <tr><td><pre>integer</pre></td><td><pre>* | int32</pre></td><td><pre>Int</pre></td></tr>
 <tr><td><pre>integer</pre></td><td><pre>int64</pre></td><td><pre>Long</pre></td></tr>
 <tr><td><pre>integer</pre></td><td><pre>int16</pre></td><td><pre>Short</pre></td></tr>

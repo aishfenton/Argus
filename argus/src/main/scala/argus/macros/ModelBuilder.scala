@@ -34,6 +34,7 @@ class ModelBuilder[U <: Universe](val u: U) {
     case (SimpleTypes.Number, Some(Formats.Single)) => tq"Float"
     case (SimpleTypes.Number, _) => tq"Double"
     case (SimpleTypes.String, Some(Formats.Uuid)) => tq"java.util.UUID"
+    case (SimpleTypes.String, Some(Formats.DateTime)) => tq"org.joda.time.DateTime"
     case (SimpleTypes.String, _) => tq"String"
     case (SimpleTypes.Null, _) => tq"Null"
     case _ => throw new Exception("Type isn't a known intrinsic type " + st)
