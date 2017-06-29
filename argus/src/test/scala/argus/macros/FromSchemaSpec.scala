@@ -386,6 +386,18 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     lines.size should be >= 10
   }
 
+  it should "support outPath with a package name and write out the generated code" in {
+    @fromSchemaResource("/simple.json", outPath=Some("/tmp/SimplePackage.scala"), outPathPackage = Some("org.argus.simple"))
+    object Simple
+
+    val file = new File("/tmp/SimplePackage.scala")
+    file should exist
+
+    val lines = Source.fromFile(file).getLines.toList
+    lines.head should === ("package org.argus.simple;")
+    lines.size should be >= 10
+  }
+
   it should "support name, and name the root element using it" in {
     @fromSchemaResource("/simple.json", name="Person")
     object Schema
