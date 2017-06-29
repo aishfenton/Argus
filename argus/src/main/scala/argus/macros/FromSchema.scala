@@ -68,7 +68,7 @@ class SchemaMacros(val c: Context) {
   private val helpers = new ASTHelpers[c.universe.type](c.universe)
   import helpers._
 
-  case class Params(schema: Schema.Root, debug: Boolean, jsonEnd: Option[JsonEng], outPath: Option[String], name: String)
+  case class Params(schema: Schema.Root, debug: Boolean, jsonEnd: Option[JsonEng], outPath: Option[String], name: String, codePrefix: Option[String])
 
   private def extractParams(prefix: Tree): Params = {
     val q"new $name (..$paramASTs)" = prefix
@@ -104,9 +104,10 @@ class SchemaMacros(val c: Context) {
     )
   }
 
-  private def saveToFile(path: String, tree: Tree) = {
+  private def saveToFile(path: String, tree: Tree, codePrefix: Option[String]) = {
     // Clean up the code a little to make it more readable
-    val code = showCode(tree)
+    val code = codePrefix.getOrElse("")
+      + showCode(tree)
       .replaceAll(",", ",\n")
       .replaceAll("\\.flatMap", "\n.flatMap")
 
@@ -162,7 +163,7 @@ class SchemaMacros(val c: Context) {
 
     if (params.debug) println(showCode(result))
 
-    params.outPath match { case Some(path) => saveToFile(path, result); case None => /* noop */ }
+    params.outPath match { case Some(path) => saveToFile(path, result, params.codePrefix); case None => /* noop */ }
 
     c.Expr[Any](result)
   }
