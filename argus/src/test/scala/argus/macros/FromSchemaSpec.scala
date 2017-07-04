@@ -331,7 +331,6 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
 
 
     val dateTime = "2017-01-01T10:00:00.000Z"
-    val uuid = "38400000-8cf0-11bd-b23e-10b96e4ef00d"
     val root = Root(Some(DateTime.parse(dateTime)))
     root.asJson should beSameJsonAs (s"""
                                         |{
