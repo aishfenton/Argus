@@ -137,8 +137,8 @@ class CirceCodecBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
     val res = codecBuilder.mkCodec(defs)
 
     res collect extractCodecNameAndType should contain theSameElementsAs
-      List(("dateTimeEncoder", "Encoder[org.joda.time.DateTime]"), ("dateTimeDecoder", "Decoder[org.joda.time.DateTime]"),
-        ("FooEncoder","Encoder[Foo]"), ("FooDecoder","Decoder[Foo]"), ("BarEncoder","Encoder[Bar]"), ("BarDecoder","Decoder[Bar]"))
+      List(("FooEncoder","Encoder[Foo]"), ("FooDecoder","Decoder[Foo]"), ("BarEncoder","Encoder[Bar]"),
+        ("BarDecoder","Decoder[Bar]"))
   }
 
   it should "ignore other definitions" in {
@@ -148,16 +148,14 @@ class CirceCodecBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
         Nil
 
     val res = codecBuilder.mkCodec(defs) collect extractCodecNameAndType
-    res should contain theSameElementsAs List(("dateTimeEncoder", "Encoder[org.joda.time.DateTime]"),
-      ("dateTimeDecoder", "Decoder[org.joda.time.DateTime]"))
+    res should contain theSameElementsAs Nil
   }
 
   it should "work with nested case classes" in {
     val defs = List(q"object Root { object Foo { case class Bar(a: Int) } }")
     val res = codecBuilder.mkCodec(defs)
     res collect extractCodecNameAndType should contain theSameElementsAs
-      List(("dateTimeEncoder", "Encoder[org.joda.time.DateTime]"), ("dateTimeDecoder", "Decoder[org.joda.time.DateTime]"),
-        ("RootFooBarEncoder","Encoder[Root.Foo.Bar]"), ("RootFooBarDecoder","Decoder[Root.Foo.Bar]"))
+      List(("RootFooBarEncoder","Encoder[Root.Foo.Bar]"), ("RootFooBarDecoder","Decoder[Root.Foo.Bar]"))
   }
 
   it should "add an encoder/decoder for each @enum" in {
@@ -174,9 +172,7 @@ class CirceCodecBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
     val res = codecBuilder.mkCodec(defs)
 
     res collect extractCodecNameAndType should contain theSameElementsAs
-      ("dateTimeEncoder", "Encoder[org.joda.time.DateTime]") ::
-        ("dateTimeDecoder", "Decoder[org.joda.time.DateTime]") ::
-        ("FooEncoder","Encoder[Foo]") ::
+      ("FooEncoder","Encoder[Foo]") ::
         ("FooDecoder","Decoder[Foo]") ::
         Nil
 
@@ -194,9 +190,7 @@ class CirceCodecBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
 
     val res = codecBuilder.mkCodec(defs)
     res collect extractCodecNameAndType should contain theSameElementsAs
-      ("dateTimeEncoder", "Encoder[org.joda.time.DateTime]") ::
-        ("dateTimeDecoder", "Decoder[org.joda.time.DateTime]") ::
-        ("FooEncoder","Encoder[Foo]") ::
+      ("FooEncoder","Encoder[Foo]") ::
         ("FooDecoder","Decoder[Foo]") ::
         Nil
 

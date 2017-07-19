@@ -33,7 +33,7 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
 
   it should "create types with format for string type" in {
     mb.mkIntrinsicType(SimpleTypes.String, Some(Formats.Uuid)) should === (tq"java.util.UUID")
-    mb.mkIntrinsicType(SimpleTypes.String, Some(Formats.DateTime)) should === (tq"org.joda.time.DateTime")
+    mb.mkIntrinsicType(SimpleTypes.String, Some(Formats.DateTime)) should === (tq"java.time.ZonedDateTime")
   }
 
   it should "create types with unknown or incompatible formats" in {
