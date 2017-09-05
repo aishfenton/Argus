@@ -82,6 +82,50 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
     root.country should === (Some(Root.CountryEnums.NZ))
   }
 
+  it should "build single-value enum types" in {
+    @fromSchemaJson("""
+    {
+      "type" : "object",
+      "required" : ["pet"],
+      "properties": {
+        "pet": {
+          "oneOf": [
+            { "$ref": "#/definitions/Cat" },
+            { "$ref": "#/definitions/Dog" }
+          ]
+        }
+      },
+      "definitions": {
+        "Cat": {
+          "type": "object",
+          "properties" : { "species" : { "enum" : ["cat"] } },
+          "required" : ["species"]
+        },
+        "Dog": {
+          "type": "object",
+          "properties" : { "species" : { "enum" : ["dog"] } },
+          "required" : ["species"]
+        }
+      }
+    }
+    """)
+    object Foo
+    import Foo._
+
+    // it would be nice to also generate these implicits when each
+    // case has a distinct value
+    implicit def cat2PetUnion(c: Cat): Root.PetUnion = Root.PetCat(c)
+    implicit def dog2PetUnion(d: Dog): Root.PetUnion = Root.PetDog(d)
+
+    var owner = Root(pet = Cat(species = Cat.SpeciesEnums.Cat))
+
+    owner = owner.copy(pet = Dog(species = Dog.SpeciesEnums.Dog))
+
+    // we can also create Cat with the default single-enum constructor
+    owner = owner.copy(pet = Cat())
+    owner = owner.copy(pet = Dog())
+  }
+
   it should "build union types" in {
     @fromSchemaJson("""
     {
