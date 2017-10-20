@@ -45,5 +45,5 @@ object JsonDiff {
     diffR(j1, j2)
   }
 
-  val NoNullPrinter = Printer.spaces2.copy(dropNullKeys = true)
+  val NoNullPrinter = Printer.spaces2.copy(dropNullValues = true)
 }

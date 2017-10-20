@@ -1,7 +1,7 @@
 import ReleaseTransformations._
 
 lazy val Vers = new {
-  val circe = "0.7.0"
+  val circe = "0.9.0-M1"
   val scalatest = "3.0.1"
 }
 
@@ -9,8 +9,8 @@ lazy val commonSettings = Seq(
   name := "Argus",
   organization := "com.github.aishfenton",
   scalaVersion := "2.12.1",
-  crossScalaVersions := Seq("2.11.8", "2.12.1"),
-  scalacOptions += "-target:jvm-1.7",
+  crossScalaVersions := Seq("2.11.11", "2.12.1"),
+  scalacOptions ++= Seq("-target:jvm-1.7", "-Ypartial-unification"),
   homepage := Some(url("https://github.com/aishfenton/Argus")),
   licenses := Seq("MIT License" -> url("http://www.opensource.org/licenses/MIT")),
 
