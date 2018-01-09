@@ -10,9 +10,3 @@ jdk:
 script:
   - sbt clean test
 
-# required until bug is fixed: https://github.com/travis-ci/travis-ci/issues/3259
-sudo: false
-addons:
-  apt:
-    packages:
-      - oracle-java8-installer
