@@ -88,7 +88,7 @@ object Schema {
 
     def toJson = this.asJson
     def toJsonString = this.asJson.pretty(printer)
-    val printer = Printer.spaces2.copy(dropNullKeys = true)
+    val printer = Printer.spaces2.copy(dropNullValues = true)
 
     // Convenience method since any/all of are treated roughly the same by the generated code
     def multiOf = anyOf.orElse(allOf)
@@ -212,7 +212,7 @@ object Schema {
           // sequence() is cats magic to make List(Right(1), Right(2)) into Either(List(1,2)), used here ensure
           // that if parse errors occured within fields, those errors as propogated up
           // NB: explicit type is just to help IntelliJ realize this is valid. Not really required.
-          results.sequenceU: Either[DecodingFailure, List[Field]]
+          results.sequence: Either[DecodingFailure, List[Field]]
         }
 
         // Properties isn't an object?!?
