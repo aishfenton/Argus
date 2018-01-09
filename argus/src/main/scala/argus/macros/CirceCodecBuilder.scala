@@ -42,9 +42,9 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
       case a: Array[Long]    @unchecked => a.asJson
       case a: Array[Float]   @unchecked => a.asJson
       case a: Array[Double]  @unchecked => a.asJson
-      case s: Array[Any]     @unchecked => s.asJson(Encoder.encodeTraversableOnce(anyEncoder, implicitly))
-      case s: Seq[Any]       @unchecked => s.asJson(Encoder.encodeTraversableOnce(anyEncoder, implicitly))
-      case ma: Map[String, Any] @unchecked => ma.asJson(Encoder.encodeMapLike(KeyEncoder.encodeKeyString, anyEncoder))
+      case s: Array[Any]     @unchecked => s.toList.asJson(Encoder.encodeList(anyEncoder))
+      case s: Seq[Any]       @unchecked => s.asJson(Encoder.encodeSeq(anyEncoder))
+      case ma: Map[String, Any] @unchecked => ma.asJson(Encoder.encodeMapLike(KeyEncoder.encodeKeyString, anyEncoder, _.toSeq))
     })
   """
 
@@ -55,7 +55,7 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
       case b if b.isBoolean => b.as[Boolean]
       case s if s.isString =>  s.as[String]
       case o if o.isObject =>  o.as[Map[String, Any]](Decoder.decodeMapLike(KeyDecoder.decodeKeyString, anyDecoder, Map.canBuildFrom))
-      case a if a.isArray =>   a.as[List[Any]](Decoder.decodeCanBuildFrom(anyDecoder, List.canBuildFrom[Any]))
+      case a if a.isArray =>   a.as[List[Any]](Decoder.decodeTraversable(anyDecoder, List.canBuildFrom[Any]))
     })
   """
 

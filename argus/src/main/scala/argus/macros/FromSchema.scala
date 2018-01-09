@@ -19,11 +19,13 @@ object JsonEngs {
   *                Some(JsonEngs.Circe) or None
   * @param outPath Optional path, that if specified writes the generated code to a file at that path (defaults to None,
   *                so no file is written).
+  * @param outPathPackage Optional package name, that if specified and if outPath also specified writes the package name
+  *                       to the output file (defaults to None, so no package name is written).
   * @param name The name used for the root case class that is generated. Defaults to "Root"
   */
 @compileTimeOnly("You must enable the macro paradise plugin.")
 class fromSchemaJson(json: String, debug: Boolean = false, jsonEng: Option[JsonEng] = None, outPath: Option[String] = None,
-                     name: String = "Root") extends StaticAnnotation {
+                     outPathPackage: Option[String] = None, name: String = "Root") extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro SchemaMacros.fromSchemaMacroImpl
 }
 
@@ -35,11 +37,13 @@ class fromSchemaJson(json: String, debug: Boolean = false, jsonEng: Option[JsonE
   *                Some(JsonEngs.Circe) or None
   * @param outPath Optional path, that if specified writes the generated code to a file at that path (defaults to None,
   *                so no file is written).
+  * @param outPathPackage Optional package name, that if specified and if outPath also specified writes the package name
+  *                       to the output file (defaults to None, so no package name is written).
   * @param name The name used for the root case class that is generated. Defaults to "Root"
   */
 @compileTimeOnly("You must enable the macro paradise plugin.")
 class fromSchemaResource(path: String, debug: Boolean = false, jsonEng: Option[JsonEng] = None, outPath: Option[String] = None,
-                         name: String = "Root") extends StaticAnnotation {
+                         outPathPackage: Option[String] = None, name: String = "Root") extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro SchemaMacros.fromSchemaMacroImpl
 }
 
@@ -51,11 +55,13 @@ class fromSchemaResource(path: String, debug: Boolean = false, jsonEng: Option[J
   *                Some(JsonEngs.Circe) or None
   * @param outPath Optional path, that if specified writes the generated code to a file at that path (defaults to None,
   *                so no file is written).
+  * @param outPathPackage Optional package name, that if specified and if outPath also specified writes the package name
+  *                       to the output file (defaults to None, so no package name is written).
   * @param name The name used for the root case class that is generated. Defaults to "Root"
   */
 @compileTimeOnly("You must enable the macro paradise plugin.")
 class fromSchemaURL(url: String, debug: Boolean = false, jsonEng: Option[JsonEng] = None, outPath: Option[String],
-                    name: String = "Root") extends StaticAnnotation {
+                    outPathPackage: Option[String] = None, name: String = "Root") extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro SchemaMacros.fromSchemaMacroImpl
 }
 
@@ -68,14 +74,15 @@ class SchemaMacros(val c: Context) {
   private val helpers = new ASTHelpers[c.universe.type](c.universe)
   import helpers._
 
-  case class Params(schema: Schema.Root, debug: Boolean, jsonEnd: Option[JsonEng], outPath: Option[String], name: String)
+  case class Params(schema: Schema.Root, debug: Boolean, jsonEnd: Option[JsonEng], outPath: Option[String],
+                    outPathPackage: Option[String], name: String)
 
   private def extractParams(prefix: Tree): Params = {
     val q"new $name (..$paramASTs)" = prefix
     val (Ident(TypeName(fn: String))) = name
 
     val commonParams = ("debug", false) :: ("jsonEng", q"Some(JsonEngs.Circe)") :: ("outPath", None) ::
-                       ("name", "Root") :: Nil
+      ("outPathPackage", None) :: ("name", "Root") :: Nil
 
     val params = fn match {
       case "fromSchemaResource" => {
@@ -100,13 +107,16 @@ class SchemaMacros(val c: Context) {
       params("debug").asInstanceOf[Boolean],
       params("jsonEng") match { case q"Some(JsonEngs.Circe)" => Some(JsonEngs.Circe); case q"None" => None },
       params("outPath").asInstanceOf[Option[String]],
+      params("outPathPackage").asInstanceOf[Option[String]],
       params("name").asInstanceOf[String]
     )
   }
 
-  private def saveToFile(path: String, tree: Tree) = {
+  private def saveToFile(path: String, packageName: Option[String], tree: Tree) = {
+    val packageCode = packageName.map(pn => s"package $pn;\n\n").getOrElse("")
+
     // Clean up the code a little to make it more readable
-    val code = showCode(tree)
+    val code = packageCode + showCode(tree)
       .replaceAll(",", ",\n")
       .replaceAll("\\.flatMap", "\n.flatMap")
 
@@ -129,8 +139,8 @@ class SchemaMacros(val c: Context) {
       Nil
     else
       q"trait LowPriorityImplicits { ..$codecDefs }" ::
-      q"object Implicits extends LowPriorityImplicits" ::
-      Nil
+        q"object Implicits extends LowPriorityImplicits" ::
+        Nil
   }
 
   def fromSchemaMacroImpl(annottees: c.Expr[Any]*): c.Expr[Any] = {
@@ -162,7 +172,7 @@ class SchemaMacros(val c: Context) {
 
     if (params.debug) println(showCode(result))
 
-    params.outPath match { case Some(path) => saveToFile(path, result); case None => /* noop */ }
+    params.outPath match { case Some(path) => saveToFile(path, params.outPathPackage, result); case None => /* noop */ }
 
     c.Expr[Any](result)
   }

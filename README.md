@@ -244,10 +244,11 @@ There's still a lot to do! Looking for contributors to address any of above.
 # Usage Tips
 
 1. All macros support arguments ```debug=true``` and ```outPath="..."```. ```debug``` causes the generated 
-code to be dumped to stdout, and ```outPath``` causes the generated code to be written to a file.
+code to be dumped to stdout, and ```outPath``` causes the generated code to be written to a file. 
+The optional argument ```outPathPackage``` allows to specify a package name for the output file.
  
     ```scala
-    @fromSchemaResource("/simple.json", debug=true, outPath="/tmp/Simple.Scala")
+    @fromSchemaResource("/simple.json", debug=true, outPath="/tmp/Simple.Scala", outPathPackage="argus.simple")
     object Test
     ```
 
