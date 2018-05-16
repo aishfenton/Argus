@@ -8,7 +8,7 @@ lazy val Vers = new {
 lazy val commonSettings = Seq(
   name := "Argus",
   organization := "com.github.aishfenton",
-  scalaVersion := "2.12.1",
+  scalaVersion := "2.12.2",
   crossScalaVersions := Seq("2.11.11", "2.12.2"),
   scalacOptions ++= Seq("-target:jvm-1.8", "-Ypartial-unification"),
   homepage := Some(url("https://github.com/aishfenton/Argus")),
@@ -89,6 +89,7 @@ lazy val argus = project.
       "io.circe" %% "circe-core" % Vers.circe,
       "io.circe" %% "circe-generic" % Vers.circe,
       "io.circe" %% "circe-parser" % Vers.circe,
+      "io.circe" %% "circe-java8" % Vers.circe,
 
       "org.scalactic" %% "scalactic" % Vers.scalatest % Test,
       "org.scalatest" %% "scalatest" % Vers.scalatest % Test

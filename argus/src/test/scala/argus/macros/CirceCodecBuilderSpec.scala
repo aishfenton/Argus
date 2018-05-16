@@ -64,9 +64,9 @@ class CirceCodecBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
   "mkUnionEncoder()" should "make encoders for a given @union set" in {
     val union =
       (tq"Int", tq"FooInt") ::
-      (tq"String", tq"Root.FooString") ::
-      (tq"Bar.Person", tq"FooBarPerson") ::
-      Nil
+        (tq"String", tq"Root.FooString") ::
+        (tq"Bar.Person", tq"FooBarPerson") ::
+        Nil
 
     val res = codecBuilder.mkUnionEncoder(tq"Foo", union)
 
@@ -82,9 +82,9 @@ class CirceCodecBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
   "mkUnionDecoder()" should "make decoders for a given @union set" in {
     val union =
       (tq"Int", tq"FooInt") ::
-      (tq"String", tq"Root.FooString") ::
-      (tq"Bar.Person", tq"FooBarPerson") ::
-      Nil
+        (tq"String", tq"Root.FooString") ::
+        (tq"Bar.Person", tq"FooBarPerson") ::
+        Nil
 
     val res = codecBuilder.mkUnionDecoder(tq"Foo", union)
 
@@ -100,8 +100,8 @@ class CirceCodecBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
   "mkEnumEncoder()" should "make encoders for a given @enum set" in {
     val enums =
       ("1", tq"Foo1") ::
-      ("\"NZ\"", tq"FooNZ") ::
-      Nil
+        ("\"NZ\"", tq"FooNZ") ::
+        Nil
 
     val res = codecBuilder.mkEnumEncoder(tq"Foo", enums)
     res should === (q"""
@@ -112,8 +112,8 @@ class CirceCodecBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
   "mkEnumDecoder()" should "make decoders for a given @enum set" in {
     val pairs =
       ("1", q"FooEnum.Foo1") ::
-      ("\"NZ\"", q"FooEnum.FooNZ") ::
-      Nil
+        ("\"NZ\"", q"FooEnum.FooNZ") ::
+        Nil
 
     val res = codecBuilder.mkEnumDecoder(tq"Foo", pairs)
     res should === (q"""
@@ -131,23 +131,24 @@ class CirceCodecBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
   "mkCodec()" should "make add an encoder/decoder for each case class" in {
     val defs =
       q"case class Foo(a: Int)" ::
-      q"case class Bar(b: Int, c: String)" ::
-      Nil
+        q"case class Bar(b: Int, c: String)" ::
+        Nil
 
     val res = codecBuilder.mkCodec(defs)
 
     res collect extractCodecNameAndType should contain theSameElementsAs
-      List(("FooEncoder","Encoder[Foo]"), ("FooDecoder","Decoder[Foo]"), ("BarEncoder","Encoder[Bar]"), ("BarDecoder","Decoder[Bar]"))
+      List(("FooEncoder","Encoder[Foo]"), ("FooDecoder","Decoder[Foo]"), ("BarEncoder","Encoder[Bar]"),
+        ("BarDecoder","Decoder[Bar]"))
   }
 
   it should "ignore other definitions" in {
     val defs =
       q"val a = 1" ::
-      q"object A" ::
-      Nil
+        q"object A" ::
+        Nil
 
     val res = codecBuilder.mkCodec(defs) collect extractCodecNameAndType
-    res should be (empty)
+    res should contain theSameElementsAs Nil
   }
 
   it should "work with nested case classes" in {
@@ -160,20 +161,20 @@ class CirceCodecBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
   it should "add an encoder/decoder for each @enum" in {
     val defs =
       q"@enum sealed trait Foo extends scala.Product with scala.Serializable { def json: String }" ::
-      q"""
+        q"""
         object FooEnum {
           case object Foo1 extends Foo { val json: String = "1" }
           case object FooNZ extends Foo { val json: String = "\"NZ\"" }
         }
       """ ::
-      Nil
+        Nil
 
     val res = codecBuilder.mkCodec(defs)
 
     res collect extractCodecNameAndType should contain theSameElementsAs
       ("FooEncoder","Encoder[Foo]") ::
-      ("FooDecoder","Decoder[Foo]") ::
-      Nil
+        ("FooDecoder","Decoder[Foo]") ::
+        Nil
 
     val code = res map(showCode(_)) mkString("")
     code should include("parse(\"1\")")
@@ -183,15 +184,15 @@ class CirceCodecBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
   it should "add an encoder/decoder for each @union" in {
     val defs =
       q"@union sealed trait Foo extends scala.Product with scala.Serializable" ::
-      q"case class FooInt(x: Int) extends Foo" ::
-      q"case class FooBarPerson(x: bar.Person) extends Foo" ::
-      Nil
+        q"case class FooInt(x: Int) extends Foo" ::
+        q"case class FooBarPerson(x: bar.Person) extends Foo" ::
+        Nil
 
     val res = codecBuilder.mkCodec(defs)
     res collect extractCodecNameAndType should contain theSameElementsAs
       ("FooEncoder","Encoder[Foo]") ::
-      ("FooDecoder","Decoder[Foo]") ::
-      Nil
+        ("FooDecoder","Decoder[Foo]") ::
+        Nil
 
     val code = res map(showCode(_)) mkString("")
     code should include("FooBarPerson(x)")
@@ -201,8 +202,8 @@ class CirceCodecBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
   it should "add an encoder/decoder for AnyWrapper types (and not for other types)" in {
     val defs =
       q"case class Foo(x: Any)" ::
-      q"case class Bar(x: Int)" ::
-      Nil
+        q"case class Bar(x: Int)" ::
+        Nil
 
     val res = codecBuilder.mkCodec(defs)
     res collect extractCodecNameAndType should contain allOf(

@@ -53,4 +53,51 @@ class SchemaSpec extends FlatSpec with Matchers {
     pending
   }
 
+  it should "decode int64 format" in {
+    val json =
+      """
+        |{
+        |  "type" : "object",
+        |  "properties": {
+        |    "age": {
+        |      "type": "integer",
+        |      "format": "int64"
+        |     }
+        |  }
+        |}
+      """.stripMargin
+    val schema = Schema.fromJson(json)
+
+    val ageFormat = for {
+      props <- schema.properties
+      country <- props.find(_.name == "age")
+      enum <- country.schema.format
+    } yield enum
+
+    ageFormat should === (Some(Formats.Int64))
+  }
+
+  it should "decode unknown format" in {
+    val json =
+      """
+        |{
+        |  "type" : "object",
+        |  "properties": {
+        |    "age": {
+        |      "type": "integer",
+        |      "format": "color"
+        |     }
+        |  }
+        |}
+      """.stripMargin
+    val schema = Schema.fromJson(json)
+
+    val ageFormat = for {
+      props <- schema.properties
+      country <- props.find(_.name == "age")
+      enum <- country.schema.format
+    } yield enum
+
+    ageFormat should === (Some(Formats.Unknown))
+  }
 }

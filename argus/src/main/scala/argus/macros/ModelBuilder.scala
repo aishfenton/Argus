@@ -22,14 +22,21 @@ class ModelBuilder[U <: Universe](val u: U) {
     SimpleTypes.Integer :: SimpleTypes.Null :: Nil
 
   /**
-    * Make a type from a SimpleType, when st is a built in type (i.e. Boolean, Int, Double, String, or Null)
+    * Make a type from a SimpleType and an optional Format, when st is a built in type (i.e. Boolean, Int, Double,
+    * String, or Null)
     */
-  def mkIntrinsicType(st: SimpleType): Tree = st match {
-    case SimpleTypes.Boolean => tq"Boolean"
-    case SimpleTypes.Integer => tq"Int"
-    case SimpleTypes.Number => tq"Double"
-    case SimpleTypes.String => tq"String"
-    case SimpleTypes.Null => tq"Null"
+  def mkIntrinsicType(st: SimpleType, format: Option[Format]): Tree = (st,format) match {
+    case (SimpleTypes.Boolean, _) => tq"Boolean"
+    case (SimpleTypes.Integer, Some(Formats.Int64)) => tq"Long"
+    case (SimpleTypes.Integer, Some(Formats.Int16)) => tq"Short"
+    case (SimpleTypes.Integer, Some(Formats.Int8)) => tq"Byte"
+    case (SimpleTypes.Integer, _)  => tq"Int"
+    case (SimpleTypes.Number, Some(Formats.Single)) => tq"Float"
+    case (SimpleTypes.Number, _) => tq"Double"
+    case (SimpleTypes.String, Some(Formats.Uuid)) => tq"java.util.UUID"
+    case (SimpleTypes.String, Some(Formats.DateTime)) => tq"java.time.ZonedDateTime"
+    case (SimpleTypes.String, _) => tq"String"
+    case (SimpleTypes.Null, _) => tq"Null"
     case _ => throw new Exception("Type isn't a known intrinsic type " + st)
   }
 
@@ -170,7 +177,7 @@ class ModelBuilder[U <: Universe](val u: U) {
 
       // Alias to an intrinsic type
       case (_,_,Some(SimpleTypeTyp(st: SimpleType)),_,_) if IntrinsicType.contains(st) => {
-        mkTypeAlias(path, name, mkIntrinsicType(st))
+        mkTypeAlias(path, name, mkIntrinsicType(st, schema.format))
       }
 
       // OneOfs (aka Union types)
@@ -242,7 +249,7 @@ class ModelBuilder[U <: Universe](val u: U) {
 
       // Make intrinsic type reference
       case (Some(SimpleTypeTyp(st: SimpleType)),_,_,_,_) if IntrinsicType.contains(st) => {
-        (mkIntrinsicType(st), defDefs)
+        (mkIntrinsicType(st, schema.format), defDefs)
       }
 
       // If it contains inline definitions, then delegate to mkSchema, and name type after the parameter name.

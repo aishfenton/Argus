@@ -14,6 +14,7 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
     q"import cats.syntax.either._" ::
     q"import io.circe._" ::
     q"import io.circe.syntax._" ::
+    q"import io.circe.java8.time._" ::
     Nil
 
   def inEncoder(typ: Tree) = tq"Encoder[$typ]"
@@ -33,6 +34,7 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
       case f: Float =>    f.asJson
       case d: Double =>   d.asJson
       case s: String =>   s.asJson
+      case u: java.util.UUID => u.asJson
       case a: Array[Boolean] @unchecked => a.asJson
       case a: Array[Byte]    @unchecked => a.asJson
       case a: Array[Short]   @unchecked => a.asJson
