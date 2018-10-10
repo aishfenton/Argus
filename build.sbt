@@ -10,7 +10,12 @@ lazy val commonSettings = Seq(
   organization := "com.github.aishfenton",
   scalaVersion := "2.12.2",
   crossScalaVersions := Seq("2.11.11", "2.12.2"),
-  scalacOptions ++= Seq("-target:jvm-1.8", "-Ypartial-unification"),
+  scalacOptions ++= Seq(
+    "-target:jvm-1.8",
+    "-Ypartial-unification",
+    "-feature",
+    "-language:postfixOps"
+  ),
   homepage := Some(url("https://github.com/aishfenton/Argus")),
   licenses := Seq("MIT License" -> url("http://www.opensource.org/licenses/MIT")),
 
