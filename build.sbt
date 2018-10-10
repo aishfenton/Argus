@@ -13,6 +13,7 @@ lazy val commonSettings = Seq(
   scalacOptions ++= Seq(
     "-target:jvm-1.8",
     "-Ypartial-unification",
+    "-Ywarn-unused-import",
     "-feature",
     "-language:postfixOps"
   ),
@@ -110,4 +111,3 @@ lazy val root = (project in file(".")).
 // Clears screen between refreshes in continuous mode
 maxErrors := 5
 triggeredMessage := Watched.clearWhenTriggered
-

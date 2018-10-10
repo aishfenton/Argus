@@ -4,8 +4,6 @@ import java.io.File
 import java.time.ZonedDateTime
 import java.util.UUID
 
-import argus.json.JsonDiff
-import argus.schema.Schema
 import org.scalatest.{FlatSpec, Matchers}
 import cats.syntax.either._
 import io.circe._

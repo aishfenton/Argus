@@ -1,6 +1,5 @@
 package argus.macros
 
-import scala.language.experimental.macros
 import argus.schema._
 import scala.reflect.api.Universe
 
