@@ -10,6 +10,7 @@ import io.circe._
 import io.circe.syntax._
 
 import scala.io.Source
+import scala.language.implicitConversions
 
 class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
 
