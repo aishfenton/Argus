@@ -1,9 +1,6 @@
 package argus.macros
 
-import org.scalactic.Equality
 import org.scalatest._
-
-import scala.language.experimental.macros
 
 /**
   * @author Aish Fenton.

@@ -1,7 +1,6 @@
 package argus.macros
 
 import org.scalactic.Equality
-import org.scalatest.matchers.{ MatchResult, Matcher }
 import scala.tools.reflect.ToolBox
 
 /**

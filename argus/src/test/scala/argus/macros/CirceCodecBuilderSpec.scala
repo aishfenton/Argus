@@ -1,7 +1,6 @@
 package argus.macros
 
 import org.scalatest.{FlatSpec, Matchers}
-import scala.reflect.api.Universe
 
 class CirceCodecBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
 
