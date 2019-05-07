@@ -55,7 +55,7 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
       case b if b.isBoolean => b.as[Boolean]
       case s if s.isString =>  s.as[String]
       case o if o.isObject =>  o.as[Map[String, Any]](Decoder.decodeMapLike(KeyDecoder.decodeKeyString, anyDecoder, Map.canBuildFrom))
-      case a if a.isArray =>   a.as[List[Any]](Decoder.decodeTraversable(anyDecoder, List.canBuildFrom[Any]))
+      case a if a.isArray =>   a.as[List[Any]](Decoder.decodeIterable(anyDecoder, List.canBuildFrom[Any]))
     })
   """
 
