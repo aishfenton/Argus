@@ -436,7 +436,7 @@ class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
 
     root should be ('left)
     root.left.get match {
-      case d: DecodingFailure => d.getMessage should === ("ZonedDateTime: DownField(createdAt)")
+      case d: DecodingFailure => d.getMessage should === ("ZonedDateTime (Text 'wrongDateTime' could not be parsed at index 0): DownField(createdAt)")
       case e@_ => fail(s"Wrong error type: ${e.getClass.getName}")
     }
   }
