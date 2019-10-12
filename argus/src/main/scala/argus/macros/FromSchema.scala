@@ -74,7 +74,7 @@ class SchemaMacros(val c: Context) {
   private val helpers = new ASTHelpers[c.universe.type](c.universe)
   import helpers._
 
-  case class Params(schema: Schema.Root, debug: Boolean, jsonEnd: Option[JsonEng], outPath: Option[String],
+  case class Params(schema: Schema, debug: Boolean, jsonEnd: Option[JsonEng], outPath: Option[String],
                     outPathPackage: Option[String], name: String)
 
   private def extractParams(prefix: Tree): Params = {
@@ -103,7 +103,7 @@ class SchemaMacros(val c: Context) {
     }
 
     Params(
-      params("schema").asInstanceOf[Schema.Root],
+      params("schema").asInstanceOf[Schema],
       params("debug").asInstanceOf[Boolean],
       params("jsonEng") match { case q"Some(JsonEngs.Circe)" => Some(JsonEngs.Circe); case q"None" => None },
       params("outPath").asInstanceOf[Option[String]],

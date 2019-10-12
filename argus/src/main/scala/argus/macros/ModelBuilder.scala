@@ -105,7 +105,7 @@ class ModelBuilder[U <: Universe](val u: U) {
     * @param schemas A list of allowed sub-types
     * @return A list of definitions created to support the union type.
     */
-  def mkUnionTypeDef(path: List[String], baseName: String, schemas: List[Root]): (Tree, List[Tree]) = {
+  def mkUnionTypeDef(path: List[String], baseName: String, schemas: List[Schema]): (Tree, List[Tree]) = {
     val baseTyp = TypeName(baseName + "Union")
     val baseDef = q"@union sealed trait $baseTyp extends scala.Product with scala.Serializable"
 
@@ -141,7 +141,7 @@ class ModelBuilder[U <: Universe](val u: U) {
     *   - schmea.typ.array, creates an array based on the type defined within schema.items
     *   - schema.typ.List[st], ???
     */
-  def mkDef(path: List[String], name: String, schema: Root): (Tree, List[Tree]) = {
+  def mkDef(path: List[String], name: String, schema: Schema): (Tree, List[Tree]) = {
 
     (schema.$ref, schema.enum, schema.typ,  schema.oneOf, schema.multiOf) match {
 
@@ -206,7 +206,7 @@ class ModelBuilder[U <: Universe](val u: U) {
     * @return A tuple containing the Ident of the type, and a Tree of any addition class definitions
     *         that needed to be generated.
     */
-  def mkType(path: List[String], schema: Root, defaultName: String): (Tree, List[Tree]) = {
+  def mkType(path: List[String], schema: Schema, defaultName: String): (Tree, List[Tree]) = {
 
     // Types are a bit strange. They are type definitions and schemas. We extract any inner /definitions
     // and embed those
@@ -316,7 +316,7 @@ class ModelBuilder[U <: Universe](val u: U) {
     * @param path A package path for where this is defined. Defaults to Nil.
     * @return A tuple containing the type of the root element that is generated, and all definitions required to support it
     */
-  def mkSchemaDef(name: String, schema: Root, path: List[String] = Nil): (Tree, List[Tree]) = {
+  def mkSchemaDef(name: String, schema: Schema, path: List[String] = Nil): (Tree, List[Tree]) = {
 
     // Make definitions
     val fieldDefs = for {

@@ -1,165 +1,22 @@
 package argus
 
-import java.io.InputStream
-
 import cats.instances.all._
 import cats.syntax.traverse._
 import cats.syntax.either._
 import io.circe._
 import io.circe.syntax._
 
-import scala.io.Source
-
 package object schema {
-
-  def fromInputStream(is: InputStream): Root = {
-    if (is == null) throw new Exception("Input stream is null")
-    fromJson(Source.fromInputStream(is).getLines.mkString("\n"))
-  }
-
-  def fromURL(url: String): Root = {
-    JsonNumber
-    JsonObject
-    fromJson(Source.fromURL(url).getLines.mkString("\n"))
-  }
-
-  def fromResource(path: String) = fromInputStream(getClass.getResourceAsStream(path))
-
-  def fromJson(str: String): Root = {
-    val result = for {
-      json <- parser.parse(str)
-      root <- json.as[Root]
-    } yield root
-
-    result match {
-      case Right(root) => root
-      case Left(failure) => throw new Exception("Error parsing schema: " + failure.toString)
-    }
-  }
-
-  /**
-    * Convenience method for creating a schema from a simple type (e.g. { "type" : "string" }
-    */
-  def schemaFromSimpleType(st: SimpleType) = Root(typ=Some(SimpleTypeTyp(st)))
-
-  /**
-    * Convenience method for creating schemas that represent an object (based on given fields)
-    */
-  def schemaFromFields(fields: List[Field]) = Root(typ=Some(SimpleTypeTyp(SimpleTypes.Object)), properties=Some(fields))
-
-  /**
-    * Convenience method for creating schemas that reference another schema
-    */
-  def schemaFromRef(ref: String) = Root($ref = Some(ref))
-
-  /**
-    * Convenience method for creating schemas from enums
-    * @param enum A list if items to enum (encoded as json strings)
-    */
-  def schemaFromEnum(enum: List[String]) = Root(enum = Some(enum))
-
-  /**
-    * Convenience method for creating schemas from an array
-    * @param schema A schema that defines the type of the array
-    */
-  def schemaFromArray(schema: Root) = Root(typ=Some(SimpleTypeTyp(SimpleTypes.Array)), items=Some(ItemsRoot(schema)))
-
-  /**
-    * Convenience method for creating schemas based on a union type of the listed schemas (aka oneOf)
-    */
-  def schemaFromUnionType(schemas: List[Root]) = Root(oneOf=Some(schemas))
 
   // -------
   // Model objects
   // -------
 
-  type PositiveInteger = Int
-  type SchemaArray = List[Root]
+  type SchemaArray = List[Schema]
   type StringArray = List[String]
+  type PositiveInteger = Int
 
-  case class Root(
-     $schema: Option[String] = None,
-     id: Option[String] = None,
-     title: Option[String] = None,
-     description: Option[String] = None,
-     definitions: Option[List[Field]] = None,
-     properties: Option[List[Field]] = None,
-     typ: Option[Typ] = None, enum: Option[List[String]] = None,
-     oneOf: Option[SchemaArray] = None, anyOf: Option[SchemaArray] = None,
-     allOf: Option[SchemaArray] = None,
-     not: Option[Root] = None,
-     required: Option[StringArray] = None,
-     items: Option[Items] = None,
-     format: Option[String] = None,
-     minimum: Option[Double] = None,
-     maximum: Option[Double] = None,
-     exclusiveMinimum: Option[Boolean] = None,
-     exclusiveMaximum: Option[Boolean] = None,
-     $ref: Option[String] = None) {
-
-    def toJson = this.asJson
-    def toJsonString = this.asJson.pretty(printer)
-    val printer = Printer.spaces2.copy(dropNullValues = true)
-
-    // Convenience method since any/all of are treated roughly the same by the generated code
-    def multiOf = anyOf.orElse(allOf)
-
-    def justDefinitions = Root(definitions=this.definitions)
-  }
-
-  // Useful for dealing with enums, which we leave as raw Json, but because we don't want to expose our Json implementation
-  // in the external API we encode as strings
-  private def toStringList(jl: Option[List[Json]]): Option[List[String]] = jl.map(_.map(_.noSpaces))
-  private def toJsonList(sl: Option[List[String]]): Option[List[Json]] = sl.map(_.map(s => parser.parse(s).toOption.get))
-
-  implicit val RootDecoder: Decoder[Root] =
-    Decoder.instance((c) => for {
-      $schema <- c.downField("$schema").as[Option[String]]
-      id <- c.downField("id").as[Option[String]]
-      title <- c.downField("title").as[Option[String]]
-      description <- c.downField("description").as[Option[String]]
-      definitions <- c.downField("definitions").as[Option[List[Field]]]
-      properties <- c.downField("properties").as[Option[List[Field]]]
-      typ <- c.downField("type").as[Option[Typ]]
-      enum <- c.downField("enum").as[Option[List[Json]]].map(toStringList)
-      oneOf <- c.downField("oneOf").as[Option[SchemaArray]]
-      anyOf <- c.downField("anyOf").as[Option[SchemaArray]]
-      allOf <- c.downField("allOf").as[Option[SchemaArray]]
-      not <- c.downField("not").as[Option[Root]]
-      required <- c.downField("required").as[Option[StringArray]]
-      items <- c.downField("items").as[Option[Items]]
-      format <- c.downField("format").as[Option[String]]
-      minimum <- c.downField("minimum").as[Option[Double]]
-      maximum <- c.downField("maximum").as[Option[Double]]
-      exclusiveMinimum <- c.downField("exclusiveMinimum").as[Option[Boolean]]
-      exclusiveMaximum <- c.downField("exclusiveMaximum").as[Option[Boolean]]
-      $ref <- c.downField("$ref").as[Option[String]]
-    } yield Root($schema, id, title, description, definitions, properties, typ, enum, oneOf, anyOf, allOf, not, required,
-                 items, format, minimum, maximum, exclusiveMinimum, exclusiveMaximum, $ref))
-
-  implicit val RootEncoder: Encoder[Root] =
-    Encoder.instance((r: Root) => Json.obj(
-      "$schema" -> r.$schema.asJson,
-      "id" -> r.id.asJson,
-      "title" -> r.title.asJson,
-      "description" -> r.description.asJson,
-      "definitions" -> r.definitions.asJson,
-      "properties" -> r.properties.asJson,
-      "type" -> r.typ.asJson,
-      "enum" -> toJsonList(r.enum).asJson,
-      "oneOf" -> r.oneOf.asJson,
-      "anyOf" -> r.anyOf.asJson,
-      "allOf" -> r.allOf.asJson,
-      "not" -> r.not.asJson,
-      "required" -> r.required.asJson,
-      "items" -> r.items.asJson,
-      "format" -> r.format.asJson,
-      "minimum" -> r.minimum.asJson,
-      "maximum" -> r.maximum.asJson,
-      "exclusiveMinimum" -> r.exclusiveMinimum.asJson,
-      "exclusiveMaximum" -> r.exclusiveMaximum.asJson,
-      "$ref" -> r.$ref.asJson
-    ))
+  import Schema._
 
   sealed trait Typ
   case class SimpleTypeTyp(x: SimpleType) extends Typ
@@ -206,7 +63,7 @@ package object schema {
 
   implicit def SimpleTypeEncoder: Encoder[SimpleType] = Encoder.instance(_.name.asJson)
 
-  case class Field(name: String, schema: Root)
+  case class Field(name: String, schema: Schema)
 
   implicit val FieldDecoder: Decoder[List[Field]] =
     Decoder.instance((c) => {
@@ -217,7 +74,7 @@ package object schema {
 
           val results = for {
             (name, json) <- obj.toList
-            result = json.as[Root].map(Field(name, _))
+            result = json.as[Schema].map(Field(name, _))
           } yield result
 
           // sequence() is cats magic to make List(Right(1), Right(2)) into Either(List(1,2)), used here ensure
@@ -239,12 +96,12 @@ package object schema {
     })
 
   sealed trait Items
-  case class ItemsRoot(x: Root) extends Items
-  case class ItemsSchemaArray(x: List[Root]) extends Items
+  case class ItemsRoot(x: Schema) extends Items
+  case class ItemsSchemaArray(x: List[Schema]) extends Items
 
   implicit val ItemsDecoder: Decoder[Items] =
     Decoder.instance { c =>
-      (c.as[Root].map(ItemsRoot(_))) orElse
+      (c.as[Schema].map(ItemsRoot(_))) orElse
       (c.as[SchemaArray].map(ItemsSchemaArray(_)))
     }
 

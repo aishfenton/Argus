@@ -2,14 +2,15 @@ import ReleaseTransformations._
 
 lazy val Vers = new {
   val circe = "0.9.0"
-  val scalatest = "3.0.1"
+  val scalatest = "3.0.5"
+  val scalameta = "4.0.0"
 }
 
 lazy val commonSettings = Seq(
   name := "Argus",
   organization := "com.github.aishfenton",
-  scalaVersion := "2.12.1",
-  crossScalaVersions := Seq("2.11.11", "2.12.2"),
+  scalaVersion := "2.12.6",
+  crossScalaVersions := Seq("2.11.12", "2.12.2"),
   scalacOptions ++= Seq("-target:jvm-1.8", "-Ypartial-unification"),
   homepage := Some(url("https://github.com/aishfenton/Argus")),
   licenses := Seq("MIT License" -> url("http://www.opensource.org/licenses/MIT")),
@@ -31,6 +32,7 @@ lazy val commonSettings = Seq(
   publishArtifact in Test := false,
   pomIncludeRepository := { _ => false },
   sonatypeProfileName := "com.github.aishfenton",
+  releasePublishArtifactsAction := PgpKeys.publishSigned.value,
   pomExtra := (
     <scm>
       <url>git@github.com:aishfenton/Argus.git</url>
@@ -63,10 +65,11 @@ lazy val commonSettings = Seq(
     setReleaseVersion,
     commitReleaseVersion,
     tagRelease,
-    ReleaseStep(action = Command.process("publishSigned", _), enableCrossBuild = true),
+    publishArtifacts,
     setNextVersion,
     commitNextVersion,
-    ReleaseStep(action = Command.process("sonatypeReleaseAll", _), enableCrossBuild = true),
+    releaseStepCommand("sonatypeReleaseAll"),
+    //ReleaseStep(action = Command.process("sonatypeReleaseAll", _), enableCrossBuild = true),
     pushChanges
   )
 
@@ -89,6 +92,9 @@ lazy val argus = project.
       "io.circe" %% "circe-core" % Vers.circe,
       "io.circe" %% "circe-generic" % Vers.circe,
       "io.circe" %% "circe-parser" % Vers.circe,
+
+      "org.scalameta" %% "scalameta" % Vers.scalameta,
+      "org.scalameta" %% "contrib" % Vers.scalameta,
 
       "org.scalactic" %% "scalactic" % Vers.scalatest % Test,
       "org.scalatest" %% "scalatest" % Vers.scalatest % Test

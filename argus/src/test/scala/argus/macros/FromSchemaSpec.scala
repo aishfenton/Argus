@@ -3,7 +3,7 @@ package argus.macros
 import java.io.File
 
 import argus.json.JsonDiff
-import argus.schema.Schema
+import argus.schema._
 import org.scalatest.{FlatSpec, Matchers}
 import cats.syntax.either._
 import io.circe._

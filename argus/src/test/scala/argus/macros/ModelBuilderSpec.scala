@@ -9,6 +9,7 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
 
   import runtimeUniverse._
   val mb = new ModelBuilder[runtimeUniverse.type](runtimeUniverse)
+  import argus.schema._
   import argus.schema.Schema._
 
   "mkIntriniscType()" should "create types for basic types" in {
@@ -285,7 +286,7 @@ class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
   }
 
   it should "default to making a wrapper class around an Any field" in {
-    val (typ, defs) = mb.mkType("Foo" :: Nil, Root(), "Bar")
+    val (typ, defs) = mb.mkType("Foo" :: Nil, Schema(), "Bar")
 
     typ should === (tq"Foo.Bar")
     defs should === (q"case class Bar(x: Any)" :: Nil)

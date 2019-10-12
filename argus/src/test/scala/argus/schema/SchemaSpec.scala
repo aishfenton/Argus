@@ -8,15 +8,14 @@ import org.scalatest._
 import scala.io.Source
 
 class SchemaSpec extends FlatSpec with Matchers {
-  import Schema._
 
-  def diffs(parsed: Root, original: String) = JsonDiff.diff(parsed.toJson, parser.parse(original).toOption.get)
+  def diffs(parsed: Schema, original: String) = JsonDiff.diff(parsed.toJson, parser.parse(original).toOption.get)
 
   "Schema" should "round-trip a simple Json schema" in {
     val jsonStr = Source.fromInputStream(getClass.getResourceAsStream("/simple.json")).getLines.mkString("\n")
     val schema = Schema.fromResource("/simple.json")
 
-    schema shouldBe a [Root]
+    schema shouldBe a [Schema]
     diffs(schema, jsonStr) shouldBe empty
   }
 

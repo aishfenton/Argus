@@ -1,5 +1,7 @@
 package argus.gen
 
-class Implicits {
+trait Implicits {
+
+  implicit object ape extends AnnotParamsExtractor
 
 }

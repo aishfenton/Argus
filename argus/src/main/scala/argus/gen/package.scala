@@ -1,5 +1,5 @@
 package argus
 
-package object gen {
+package object gen extends Implicits {
 
 }
