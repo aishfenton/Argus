@@ -37,11 +37,11 @@ class ASTHelpers[U <: Universe](val u: U) {
     * Collects and returns case classes that extend the given type.
     * @return A list of tuples. Each tuple contains the path, and class def
     */
-  def collectExtendsType(path: List[String], typ: Tree, defs: List[Tree]): List[(List[String], Tree)] = defs collect {
+  def collectExtendsType(path: List[String], typ: Tree, defs: List[Tree]): List[(List[String], Tree)] = defs.collect {
     case (defDef@q"case object $name extends $sTyp { ..$_ }") if sTyp.equalsStructure(typ) => (path, defDef) :: Nil
     case (defDef@q"case class $name(..$params) extends $sTyp") if sTyp.equalsStructure(typ) => (path, defDef) :: Nil
     case (q"object $name { ..$innerDefs }") => collectExtendsType(path :+ name.toString, typ, innerDefs)
-  } flatten
+  }.flatten
 
   /**
     * Returns a string from a given type (with path) that somewhat uniquely identifies this type. Can be useful for
@@ -167,29 +167,6 @@ class ASTHelpers[U <: Universe](val u: U) {
     *
     * @return A map of argument names and their extracted values (or their default value if not extracted)
     */
-  def paramsToMap(nameAndDefaults: List[(String, Any)], params: List[Tree]): Map[String, Any] = {
-
-    def toValue(param: Tree): Any = param match {
-      case Ident(TermName("None")) => None
-      case Apply(Ident(TermName("Some")), List(Literal(Constant(value)))) => Some(value)
-      case Literal(Constant(c)) => c
-      case _ => param
-    }
-
-    // Handle positional vs. named argument separately
-    val (positional, named) = params splitAt (params prefixLength  {
-      case AssignOrNamedArg(Ident(TermName(name)), _) => false; case _ => true })
-
-    require(positional.length <= nameAndDefaults.length, "More position arguments than specified in: " + nameAndDefaults)
-    val posValues = nameAndDefaults zip positional map { case ((name, default), param) =>
-      (name, toValue(param))
-    } toMap
-
-    val namedValues = named map { case AssignOrNamedArg(Ident(TermName(name)), t: Tree) =>
-      (name, toValue(t))
-    } toMap
-
-    nameAndDefaults.toMap ++ posValues ++ namedValues
-  }
-
+  def paramsToMap(nameAndDefaults: List[(String, Any)], params: List[Tree]): Map[String, Any] =
+    ParamsASTHelper.paramsToMap(u)(nameAndDefaults, params)
 }

@@ -1,11 +1,12 @@
 package argus.macros
 
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 /**
   * @author Aish Fenton.
   */
-class ModelBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
+class ModelBuilderSpec extends AnyFlatSpec with Matchers with ASTMatchers {
 
   import runtimeUniverse._
   val mb = new ModelBuilder[runtimeUniverse.type](runtimeUniverse)
