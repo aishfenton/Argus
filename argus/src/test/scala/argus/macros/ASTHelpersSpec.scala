@@ -1,14 +1,14 @@
 package argus.macros
 
-import org.scalactic.Equality
-import org.scalatest._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.language.experimental.macros
 
 /**
   * @author Aish Fenton.
   */
-class ASTHelpersSpec extends FlatSpec with Matchers with ASTMatchers {
+class ASTHelpersSpec extends AnyFlatSpec with Matchers with ASTMatchers {
 
   import runtimeUniverse._
 

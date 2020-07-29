@@ -1,9 +1,11 @@
 package argus.macros
 
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+
 import scala.reflect.api.Universe
 
-class CirceCodecBuilderSpec extends FlatSpec with Matchers with ASTMatchers {
+class CirceCodecBuilderSpec extends AnyFlatSpec with Matchers with ASTMatchers {
 
   import runtimeUniverse._
 

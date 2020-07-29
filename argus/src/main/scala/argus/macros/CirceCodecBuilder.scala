@@ -14,7 +14,6 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
     q"import cats.syntax.either._" ::
     q"import io.circe._" ::
     q"import io.circe.syntax._" ::
-    q"import io.circe.java8.time._" ::
     Nil
 
   def inEncoder(typ: Tree) = tq"Encoder[$typ]"
@@ -48,16 +47,7 @@ class CirceCodecBuilder[U <: Universe](val u: U) extends CodecBuilder {
     })
   """
 
-  val anyDecoder = q"""
-    def anyDecoder: Decoder[Any] = Decoder.instance((h: HCursor) => h.focus.get match {
-      case n if n.isNull =>    null
-      case n if n.isNumber =>  n.as[Double]
-      case b if b.isBoolean => b.as[Boolean]
-      case s if s.isString =>  s.as[String]
-      case o if o.isObject =>  o.as[Map[String, Any]](Decoder.decodeMapLike(KeyDecoder.decodeKeyString, anyDecoder, Map.canBuildFrom))
-      case a if a.isArray =>   a.as[List[Any]](Decoder.decodeIterable(anyDecoder, List.canBuildFrom[Any]))
-    })
-  """
+  val anyDecoder = AnyDecoder.anyDecoder(u)
 
   def mkAnyWrapperEncoder(typ: Tree) = q"""
     Encoder.instance((wrapper: $typ) => {

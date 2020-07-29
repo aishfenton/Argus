@@ -6,14 +6,15 @@ import java.util.UUID
 
 import argus.json.JsonDiff
 import argus.schema.Schema
-import org.scalatest.{FlatSpec, Matchers}
 import cats.syntax.either._
 import io.circe._
 import io.circe.syntax._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.io.Source
 
-class FromSchemaSpec extends FlatSpec with Matchers with JsonMatchers {
+class FromSchemaSpec extends AnyFlatSpec with Matchers with JsonMatchers {
 
   "Making schemas" should "build case classes" in {
     @fromSchemaJson("""

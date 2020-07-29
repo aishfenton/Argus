@@ -113,7 +113,7 @@ trait CodecBuilder {
 
   def mkCodec(defs: List[Tree], path: List[String] = Nil): List[Tree] = {
 
-    def mkCodecRec(defs: List[Tree], path: List[String], unionTypes: List[Tree]): List[Tree] = defs collect {
+    def mkCodecRec(defs: List[Tree], path: List[String], unionTypes: List[Tree]): List[Tree] = defs.collect {
 
       //----
       // Enums
@@ -183,7 +183,7 @@ trait CodecBuilder {
         mkCodecRec(innerDefs, path :+ name.toString, collectUnionTypes(innerDefs))
       }
 
-    } flatten
+    }.flatten
 
     imports ++ constants ++ mkCodecRec(defs, path, collectUnionTypes(defs))
   }
